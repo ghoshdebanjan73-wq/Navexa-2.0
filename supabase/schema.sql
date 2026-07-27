@@ -26,12 +26,14 @@ alter table public.customers enable row level security;
 
 -- Drop policy if exists to allow running the script multiple times without error
 drop policy if exists "Allow all CRUD operations for owners on customers" on public.customers;
+drop policy if exists "Allow all CRUD operations for authenticated users on customers" on public.customers;
 
 -- Policies for customers
-create policy "Allow all CRUD operations for owners on customers"
+create policy "Allow all CRUD operations for authenticated users on customers"
     on public.customers for all
-    using (auth.uid() = user_id)
-    with check (auth.uid() = user_id);
+    to authenticated
+    using (true)
+    with check (true);
 
 
 -- -----------------------------------------------------------------------------
@@ -55,12 +57,14 @@ alter table public.vehicles enable row level security;
 
 -- Drop policy if exists to allow running the script multiple times without error
 drop policy if exists "Allow all CRUD operations for owners on vehicles" on public.vehicles;
+drop policy if exists "Allow all CRUD operations for authenticated users on vehicles" on public.vehicles;
 
 -- Policies for vehicles
-create policy "Allow all CRUD operations for owners on vehicles"
+create policy "Allow all CRUD operations for authenticated users on vehicles"
     on public.vehicles for all
-    using (auth.uid() = user_id)
-    with check (auth.uid() = user_id);
+    to authenticated
+    using (true)
+    with check (true);
 
 
 -- -----------------------------------------------------------------------------
@@ -93,12 +97,14 @@ alter table public.trips enable row level security;
 
 -- Drop policy if exists to allow running the script multiple times without error
 drop policy if exists "Allow all CRUD operations for owners on trips" on public.trips;
+drop policy if exists "Allow all CRUD operations for authenticated users on trips" on public.trips;
 
 -- Policies for trips
-create policy "Allow all CRUD operations for owners on trips"
+create policy "Allow all CRUD operations for authenticated users on trips"
     on public.trips for all
-    using (auth.uid() = user_id)
-    with check (auth.uid() = user_id);
+    to authenticated
+    using (true)
+    with check (true);
 
 
 -- -----------------------------------------------------------------------------
@@ -122,12 +128,14 @@ alter table public.maintenance enable row level security;
 
 -- Drop policy if exists to allow running the script multiple times without error
 drop policy if exists "Allow all CRUD operations for owners on maintenance" on public.maintenance;
+drop policy if exists "Allow all CRUD operations for authenticated users on maintenance" on public.maintenance;
 
 -- Policies for maintenance
-create policy "Allow all CRUD operations for owners on maintenance"
+create policy "Allow all CRUD operations for authenticated users on maintenance"
     on public.maintenance for all
-    using (auth.uid() = user_id)
-    with check (auth.uid() = user_id);
+    to authenticated
+    using (true)
+    with check (true);
 
 
 -- -----------------------------------------------------------------------------
@@ -149,12 +157,14 @@ alter table public.payments enable row level security;
 
 -- Drop policy if exists to allow running the script multiple times without error
 drop policy if exists "Allow all CRUD operations for owners on payments" on public.payments;
+drop policy if exists "Allow all CRUD operations for authenticated users on payments" on public.payments;
 
 -- Policies for payments
-create policy "Allow all CRUD operations for owners on payments"
+create policy "Allow all CRUD operations for authenticated users on payments"
     on public.payments for all
-    using (auth.uid() = user_id)
-    with check (auth.uid() = user_id);
+    to authenticated
+    using (true)
+    with check (true);
 
 
 -- -----------------------------------------------------------------------------
@@ -176,12 +186,14 @@ alter table public.transactions enable row level security;
 
 -- Drop policy if exists to allow running the script multiple times without error
 drop policy if exists "Allow all CRUD operations for owners on transactions" on public.transactions;
+drop policy if exists "Allow all CRUD operations for authenticated users on transactions" on public.transactions;
 
 -- Policies for transactions
-create policy "Allow all CRUD operations for owners on transactions"
+create policy "Allow all CRUD operations for authenticated users on transactions"
     on public.transactions for all
-    using (auth.uid() = user_id)
-    with check (auth.uid() = user_id);
+    to authenticated
+    using (true)
+    with check (true);
 
 
 -- -----------------------------------------------------------------------------
