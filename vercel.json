@@ -1,0 +1,4 @@
+{
+  "buildCommand": "cd navexa-dashboard && npm install && npm run build",
+  "outputDirectory": "navexa-dashboard/dist"
+}
