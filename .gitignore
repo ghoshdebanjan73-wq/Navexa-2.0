@@ -1,0 +1,11 @@
+.node_dist/
+navexa-dashboard.zip
+.DS_Store
+*.log
+
+# Nested project ignores
+navexa-dashboard/node_modules/
+navexa-dashboard/dist/
+navexa-dashboard/.env
+navexa-dashboard/.env.local
+navexa-dashboard/.env.*.local

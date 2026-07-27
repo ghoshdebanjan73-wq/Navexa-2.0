@@ -1,0 +1,322 @@
+import { useState } from 'react'
+import { Eye, EyeOff, Loader2, Mail, CheckCircle2, ChevronLeft } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useRouter } from '../context/RouterContext'
+
+export default function SignUpPage() {
+  const { navigate } = useRouter()
+  
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  
+  const [errors, setErrors] = useState({})
+  const [authError, setAuthError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
+
+  const validate = () => {
+    const errs = {}
+    if (!fullName.trim()) {
+      errs.fullName = 'Full Name is required.'
+    }
+    if (!email) {
+      errs.email = 'Email address is required.'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errs.email = 'Please enter a valid email address.'
+    }
+    if (!password) {
+      errs.password = 'Password is required.'
+    } else if (password.length < 8) {
+      errs.password = 'Password must be at least 8 characters long.'
+    }
+    if (!confirmPassword) {
+      errs.confirmPassword = 'Confirm your password.'
+    } else if (password !== confirmPassword) {
+      errs.confirmPassword = 'Passwords do not match.'
+    }
+    return errs
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (isSubmitting) return
+
+    const validationErrors = validate()
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors)
+      setAuthError('')
+      return
+    }
+
+    setErrors({})
+    setAuthError('')
+    setIsSubmitting(true)
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            full_name: fullName.trim()
+          }
+        }
+      })
+
+      if (error) {
+        if (error.message?.toLowerCase().includes('user already registered')) {
+          setAuthError('An account with this email address already exists.')
+        } else {
+          setAuthError(error.message || 'Failed to create your account. Please try again.')
+        }
+        setIsSubmitting(false)
+      } else if (data?.session) {
+        // Auto-signed in by Supabase Auth without requiring email confirmation
+        setIsSubmitting(false)
+        navigate('Dashboard')
+      } else {
+        // Email confirmation is required by Supabase Auth, show the check-email layout
+        setIsSuccess(true)
+        setIsSubmitting(false)
+      }
+    } catch (err) {
+      console.error('Sign up exception:', err)
+      setAuthError('An unexpected error occurred. Please try again.')
+      setIsSubmitting(false)
+    }
+  }
+
+  // ─── Verification Required Screen ──────────────────────────────────────────
+  if (isSuccess) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-bg px-4 py-12 sm:px-6 lg:px-8 animate-fadeIn">
+        <div className="w-full max-w-md space-y-6 rounded-2xl border border-line bg-surface p-6 shadow-pop text-center sm:p-8 animate-scaleUp">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mx-auto">
+            <Mail size={24} strokeWidth={2} />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-2xl font-extrabold text-ink">Check your email</h3>
+            <p className="text-xs sm:text-sm text-ink-soft leading-relaxed">
+              We sent a verification link to <strong className="text-ink font-semibold">{email}</strong>. Verify your email to activate your Navexa account.
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              onClick={() => navigate('SignIn')}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary text-white py-2.5 px-4 text-xs sm:text-sm font-bold shadow-xs hover:bg-primary-600 active:scale-[0.98] transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <ChevronLeft size={16} />
+              <span>Back to Sign In</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center bg-bg px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8 rounded-2xl border border-line bg-surface p-6 shadow-pop sm:p-8 animate-fadeUp">
+        {/* Branding & Header */}
+        <div className="text-center">
+          <h2 className="text-3xl font-extrabold tracking-tight text-primary">
+            Navexa
+          </h2>
+          <h3 className="mt-4 text-xl font-bold text-ink">
+            Create your account
+          </h3>
+          <p className="mt-1.5 text-xs sm:text-sm text-ink-soft">
+            Set up your account to start managing your business.
+          </p>
+        </div>
+
+        {/* Auth Error Banner */}
+        {authError && (
+          <div className="rounded-xl bg-danger-bg border border-danger/25 p-3.5 text-xs font-semibold text-danger animate-fadeIn">
+            {authError}
+          </div>
+        )}
+
+        {/* Sign Up Form */}
+        <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
+          {/* Full Name field */}
+          <div className="space-y-1.5">
+            <label htmlFor="full-name" className="block text-xs font-bold text-ink">
+              Full Name <span className="text-rose-500">*</span>
+            </label>
+            <input
+              id="full-name"
+              name="name"
+              type="text"
+              autoComplete="name"
+              required
+              value={fullName}
+              onChange={(e) => {
+                setFullName(e.target.value)
+                if (errors.fullName) setErrors(prev => ({ ...prev, fullName: null }))
+              }}
+              placeholder="e.g. Rahul Sharma"
+              className={`w-full rounded-xl border bg-bg px-3.5 py-2.5 text-xs sm:text-sm text-ink outline-none transition-all focus:bg-surface ${
+                errors.fullName
+                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
+                  : 'border-line focus:border-primary focus:ring-2 focus:ring-primary/15'
+              }`}
+            />
+            {errors.fullName && (
+              <p className="mt-1 text-[11px] font-semibold text-rose-600">
+                {errors.fullName}
+              </p>
+            )}
+          </div>
+
+          {/* Email field */}
+          <div className="space-y-1.5">
+            <label htmlFor="email-address" className="block text-xs font-bold text-ink">
+              Email Address <span className="text-rose-500">*</span>
+            </label>
+            <input
+              id="email-address"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                if (errors.email) setErrors(prev => ({ ...prev, email: null }))
+              }}
+              placeholder="e.g. rahul@example.com"
+              className={`w-full rounded-xl border bg-bg px-3.5 py-2.5 text-xs sm:text-sm text-ink outline-none transition-all focus:bg-surface ${
+                errors.email
+                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
+                  : 'border-line focus:border-primary focus:ring-2 focus:ring-primary/15'
+              }`}
+            />
+            {errors.email && (
+              <p className="mt-1 text-[11px] font-semibold text-rose-600">
+                {errors.email}
+              </p>
+            )}
+          </div>
+
+          {/* Password field */}
+          <div className="space-y-1.5">
+            <label htmlFor="password" className="block text-xs font-bold text-ink">
+              Password <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  if (errors.password) setErrors(prev => ({ ...prev, password: null }))
+                }}
+                placeholder="Minimum 8 characters"
+                className={`w-full rounded-xl border bg-bg pl-3.5 pr-10 py-2.5 text-xs sm:text-sm text-ink outline-none transition-all focus:bg-surface ${
+                  errors.password
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
+                    : 'border-line focus:border-primary focus:ring-2 focus:ring-primary/15'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-soft hover:text-ink cursor-pointer focus:outline-none p-1 rounded-md"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {errors.password && (
+              <p className="mt-1 text-[11px] font-semibold text-rose-600">
+                {errors.password}
+              </p>
+            )}
+          </div>
+
+          {/* Confirm Password field */}
+          <div className="space-y-1.5">
+            <label htmlFor="confirm-password" className="block text-xs font-bold text-ink">
+              Confirm Password <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                id="confirm-password"
+                name="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value)
+                  if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: null }))
+                }}
+                placeholder="Re-enter password"
+                className={`w-full rounded-xl border bg-bg pl-3.5 pr-10 py-2.5 text-xs sm:text-sm text-ink outline-none transition-all focus:bg-surface ${
+                  errors.confirmPassword
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
+                    : 'border-line focus:border-primary focus:ring-2 focus:ring-primary/15'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-soft hover:text-ink cursor-pointer focus:outline-none p-1 rounded-md"
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {errors.confirmPassword && (
+              <p className="mt-1 text-[11px] font-semibold text-rose-600">
+                {errors.confirmPassword}
+              </p>
+            )}
+          </div>
+
+          {/* Submit button */}
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary text-white py-2.5 px-4 text-xs sm:text-sm font-bold shadow-xs transition-all hover:bg-primary-600 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="animate-spin" size={16} />
+                  <span>Creating account...</span>
+                </>
+              ) : (
+                <span>Create Account</span>
+              )}
+            </button>
+          </div>
+        </form>
+
+        {/* Already have an account link */}
+        <div className="text-center pt-2">
+          <p className="text-xs text-ink-soft">
+            Already have an account?{' '}
+            <button
+              type="button"
+              onClick={() => navigate('SignIn')}
+              className="font-bold text-accent hover:underline focus:outline-none focus:ring-2 focus:ring-accent/15 rounded-md px-1 cursor-pointer bg-transparent border-0"
+            >
+              Sign In
+            </button>
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
