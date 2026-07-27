@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { syncAllStores } from '../data/syncManager'
+import { syncAllStores, setupRealtimeSubscription } from '../data/syncManager'
 
 // Centralized mock user records for Navexa
 export const MOCK_USERS = {
@@ -36,7 +36,10 @@ export function UserProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let realtimeChannel = null
+
     const handleUserSession = async (session) => {
+      setLoading(true)
       if (session) {
         const sbUser = session.user
         try {
@@ -57,6 +60,12 @@ export function UserProvider({ children }) {
             avatar: null,
           })
           syncAllStores(sbUser.id)
+
+          // Sub to Postgres Realtime changes
+          if (realtimeChannel) {
+            supabase.removeChannel(realtimeChannel)
+          }
+          realtimeChannel = setupRealtimeSubscription(sbUser.id)
         } catch (err) {
           console.error('Error fetching user profile from public.users:', err)
           setCurrentUser({
@@ -67,9 +76,19 @@ export function UserProvider({ children }) {
             avatar: null,
           })
           syncAllStores(sbUser.id)
+
+          // Sub to Postgres Realtime changes
+          if (realtimeChannel) {
+            supabase.removeChannel(realtimeChannel)
+          }
+          realtimeChannel = setupRealtimeSubscription(sbUser.id)
         }
       } else {
         setCurrentUser(null)
+        if (realtimeChannel) {
+          supabase.removeChannel(realtimeChannel)
+          realtimeChannel = null
+        }
       }
       setLoading(false)
     }
@@ -96,6 +115,9 @@ export function UserProvider({ children }) {
 
     return () => {
       subscription.unsubscribe()
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel)
+      }
     }
   }, [])
 

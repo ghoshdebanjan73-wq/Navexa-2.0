@@ -232,3 +232,9 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- Enable Realtime replication for all core application tables
+begin;
+  alter publication supabase_realtime drop table if exists customers, vehicles, trips, maintenance, payments, transactions;
+  alter publication supabase_realtime add table customers, vehicles, trips, maintenance, payments, transactions;
+commit;

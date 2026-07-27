@@ -4,6 +4,7 @@ import { syncTrips } from './tripStore'
 import { syncMaintenance } from './maintenanceStore'
 import { syncPayments } from './paymentStore'
 import { syncTransactions } from './transactionStore'
+import { supabase } from '../lib/supabase'
 
 export async function syncAllStores(userId) {
   if (!userId) return
@@ -29,4 +30,25 @@ export async function syncAllStores(userId) {
   } catch (err) {
     console.error('Failed to sync data with Supabase:', err)
   }
+}
+
+export function setupRealtimeSubscription(userId, callback) {
+  if (!userId) return null
+
+  const channel = supabase
+    .channel('schema-db-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public' },
+      async (payload) => {
+        console.log('Realtime change detected in Supabase:', payload)
+        await syncAllStores(userId)
+        if (callback) callback()
+      }
+    )
+    .subscribe((status) => {
+      console.log('Realtime subscription status:', status)
+    })
+
+  return channel
 }
