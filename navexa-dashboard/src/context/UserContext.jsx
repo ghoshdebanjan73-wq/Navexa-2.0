@@ -82,6 +82,8 @@ export function UserProvider({ children }) {
             supabase.removeChannel(realtimeChannel)
           }
           realtimeChannel = setupRealtimeSubscription(sbUser.id)
+        } finally {
+          setLoading(false)
         }
       } else {
         setCurrentUser(null)
@@ -89,8 +91,8 @@ export function UserProvider({ children }) {
           supabase.removeChannel(realtimeChannel)
           realtimeChannel = null
         }
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     // 1. Check current session
