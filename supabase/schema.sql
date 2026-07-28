@@ -301,7 +301,4 @@ create policy "Allow write access for admins on company_profile"
     );
 
 -- Enable Realtime replication for all core application tables including company_profile
-begin;
-  alter publication supabase_realtime drop table if exists customers, vehicles, trips, maintenance, payments, transactions, company_profile;
-  alter publication supabase_realtime add table customers, vehicles, trips, maintenance, payments, transactions, company_profile;
-commit;
+alter publication supabase_realtime set table customers, vehicles, trips, maintenance, payments, transactions, company_profile;
