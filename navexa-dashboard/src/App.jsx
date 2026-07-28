@@ -18,7 +18,8 @@ import InvoicesPage from './pages/Invoices'
 import ReportsPage from './pages/Reports'
 import NotificationsPage from './pages/Notifications'
 import SearchResultsPage from './pages/SearchResults'
-import { Shield, User, Settings, Loader2 } from 'lucide-react'
+import SettingsPage from './pages/Settings'
+import { Shield, User, Settings as SettingsIcon, Loader2 } from 'lucide-react'
 
 function AppContent() {
   const { activeRoute, navigate } = useRouter()
@@ -93,7 +94,7 @@ function AppContent() {
       case 'Profile':
         return <PlaceholderPage title="Profile" icon={User} desc="Manage user profile details and personal preferences." />
       case 'Settings':
-        return <PlaceholderPage title="Settings" icon={Settings} desc="Configure application settings, notifications, and preferences." />
+        return <SettingsPage />
       case 'CompanyProfile':
         return <CompanyProfilePage />
       case 'Dashboard':
