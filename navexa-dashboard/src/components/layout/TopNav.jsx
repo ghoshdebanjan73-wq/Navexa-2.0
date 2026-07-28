@@ -25,7 +25,7 @@ import {
   markAllAsRead, getUnreadCount, syncNotifications
 } from '../../data/notificationStore'
 import { liveTrips } from '../../data/tripStore'
-import TripDetailPanel from '../trips/TripDetailPanel'
+import GlobalSearchDropdown from '../search/GlobalSearchDropdown'
 
 export default function TopNav({ pageTitle = 'Dashboard' }) {
   const { user, initials, signOut } = useUser()
@@ -136,20 +136,14 @@ export default function TopNav({ pageTitle = 'Dashboard' }) {
 
         {/* CENTER / AVAILABLE SPACE: Compact & Responsive Global Search */}
         <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md mx-2">
-          {/* Mobile Search Icon Button & Overlay */}
-          <div className="sm:hidden flex justify-end">
+          {/* Mobile Search Overlay */}
+          <div className="sm:hidden w-full">
             {mobileSearchOpen ? (
-              <div className="absolute inset-x-0 top-0 z-40 flex h-14 items-center bg-surface px-4 shadow-sm border-b border-line gap-2 animate-fadeIn">
-                <Search size={16} className="text-ink-soft shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search trips, customers, transactions..."
-                  className="w-full bg-transparent text-xs sm:text-sm text-ink outline-none placeholder:text-ink-soft"
-                  autoFocus
-                />
+              <div className="flex items-center gap-2 w-full">
+                <GlobalSearchDropdown isMobileOpen={true} onCloseMobile={() => setMobileSearchOpen(false)} />
                 <button
                   onClick={() => setMobileSearchOpen(false)}
-                  className="p-1 text-ink-soft hover:text-ink"
+                  className="p-1 text-ink-soft hover:text-ink shrink-0"
                   aria-label="Close search"
                 >
                   <X size={18} />
@@ -166,18 +160,9 @@ export default function TopNav({ pageTitle = 'Dashboard' }) {
             )}
           </div>
 
-          {/* Desktop & Laptop Search Input */}
-          <div className="relative hidden sm:block w-full">
-            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
-            <input
-              type="text"
-              aria-label="Global search"
-              placeholder="Search trips, customers, transactions..."
-              className="h-9 w-full rounded-lg border border-line bg-bg pl-8.5 pr-8 text-xs font-medium text-ink placeholder:text-ink-soft/80 transition-all focus:border-accent focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent/15"
-            />
-            <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 hidden md:inline-flex items-center rounded border border-line bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-ink-soft">
-              ⌘K
-            </kbd>
+          {/* Desktop & Laptop Global Search Input */}
+          <div className="hidden sm:block w-full">
+            <GlobalSearchDropdown />
           </div>
         </div>
 

@@ -17,6 +17,7 @@ import DriversPage from './pages/Drivers'
 import InvoicesPage from './pages/Invoices'
 import ReportsPage from './pages/Reports'
 import NotificationsPage from './pages/Notifications'
+import SearchResultsPage from './pages/SearchResults'
 import { Shield, User, Settings, Loader2 } from 'lucide-react'
 
 function AppContent() {
@@ -81,6 +82,8 @@ function AppContent() {
         return <ReportsPage />
       case 'Notifications':
         return <NotificationsPage />
+      case 'Search':
+        return <SearchResultsPage />
       case 'Vehicles':
         return <VehiclesPage />
       case 'Drivers':

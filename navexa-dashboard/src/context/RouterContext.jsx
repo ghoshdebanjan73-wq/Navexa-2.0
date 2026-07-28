@@ -9,6 +9,7 @@ const ROUTE_PATHS = {
   Finance:   '/finance',
   Reports:   '/reports',
   Notifications: '/notifications',
+  Search:    '/search',
   Customers: '/customers',
   Vehicles:  '/vehicles',
   Users:     '/users',
@@ -28,6 +29,7 @@ const PATH_TO_ROUTE = {
   '/finance':   'Finance',
   '/reports':   'Reports',
   '/notifications': 'Notifications',
+  '/search':    'Search',
   '/customers': 'Customers',
   '/vehicles':  'Vehicles',
   '/users':     'Users',
@@ -50,6 +52,9 @@ export function getRouteFromLocation() {
     if (hash === 'signup') return 'SignUp'
     if (hash === 'trips') return 'Trips'
     if (hash === 'finance') return 'Finance'
+    if (hash === 'reports') return 'Reports'
+    if (hash === 'notifications') return 'Notifications'
+    if (hash === 'search') return 'Search'
     if (hash === 'customers') return 'Customers'
     if (hash === 'vehicles') return 'Vehicles'
     if (hash === 'users') return 'Users'
@@ -70,6 +75,9 @@ export function getRouteFromLocation() {
   if (pathname.endsWith('/signup')) return 'SignUp'
   if (pathname.endsWith('/trips')) return 'Trips'
   if (pathname.endsWith('/finance')) return 'Finance'
+  if (pathname.endsWith('/reports')) return 'Reports'
+  if (pathname.endsWith('/notifications')) return 'Notifications'
+  if (pathname.endsWith('/search')) return 'Search'
   if (pathname.endsWith('/customers')) return 'Customers'
   if (pathname.endsWith('/vehicles')) return 'Vehicles'
   if (pathname.endsWith('/users')) return 'Users'
