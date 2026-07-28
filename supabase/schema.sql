@@ -41,16 +41,64 @@ create policy "Allow all CRUD operations for authenticated users on customers"
 -- -----------------------------------------------------------------------------
 create table if not exists public.vehicles (
     id text primary key,
-    user_id uuid not null references auth.users(id) on delete cascade,
+    user_id uuid references auth.users(id) on delete cascade,
+    photo_url text,
     name text not null,
     type text not null,
     reg text not null,
+    brand text,
+    model text,
+    manufacturing_year integer,
+    color text,
+    fuel_type text,
+    seats integer default 4,
+    odometer numeric default 0,
+    assigned_driver_id text,
+    assigned_driver_name text,
     status text not null default 'Available',
+    rc_number text,
+    rc_expiry text,
+    rc_doc_url text,
+    insurance_policy text,
+    insurance_expiry text,
+    insurance_doc_url text,
+    fitness_expiry text,
+    fitness_doc_url text,
+    pollution_expiry text,
+    permit_expiry text,
+    permit_doc_url text,
+    next_service_date text,
+    next_service_odometer numeric,
     created_at timestamptz not null default now(),
     created_by text,
     updated_at timestamptz,
     updated_by text
 );
+
+-- Migration helpers for existing vehicles table
+alter table public.vehicles add column if not exists photo_url text;
+alter table public.vehicles add column if not exists brand text;
+alter table public.vehicles add column if not exists model text;
+alter table public.vehicles add column if not exists manufacturing_year integer;
+alter table public.vehicles add column if not exists color text;
+alter table public.vehicles add column if not exists fuel_type text;
+alter table public.vehicles add column if not exists seats integer default 4;
+alter table public.vehicles add column if not exists odometer numeric default 0;
+alter table public.vehicles add column if not exists assigned_driver_id text;
+alter table public.vehicles add column if not exists assigned_driver_name text;
+alter table public.vehicles add column if not exists rc_number text;
+alter table public.vehicles add column if not exists rc_expiry text;
+alter table public.vehicles add column if not exists rc_doc_url text;
+alter table public.vehicles add column if not exists insurance_policy text;
+alter table public.vehicles add column if not exists insurance_expiry text;
+alter table public.vehicles add column if not exists insurance_doc_url text;
+alter table public.vehicles add column if not exists fitness_expiry text;
+alter table public.vehicles add column if not exists fitness_doc_url text;
+alter table public.vehicles add column if not exists pollution_expiry text;
+alter table public.vehicles add column if not exists permit_expiry text;
+alter table public.vehicles add column if not exists permit_doc_url text;
+alter table public.vehicles add column if not exists next_service_date text;
+alter table public.vehicles add column if not exists next_service_odometer numeric;
 
 -- Enable RLS
 alter table public.vehicles enable row level security;
@@ -112,16 +160,20 @@ create policy "Allow all CRUD operations for authenticated users on trips"
 -- -----------------------------------------------------------------------------
 create table if not exists public.maintenance (
     id text primary key,
-    user_id uuid not null references auth.users(id) on delete cascade,
+    user_id uuid references auth.users(id) on delete cascade,
     vehicle_id text not null references public.vehicles(id) on delete cascade,
     type text not null,
     service_date text not null,
     cost numeric not null,
     odometer numeric,
+    workshop text,
     notes text,
     created_at timestamptz not null default now(),
     created_by text
 );
+
+-- Migration helpers for maintenance table
+alter table public.maintenance add column if not exists workshop text;
 
 -- Enable RLS
 alter table public.maintenance enable row level security;

@@ -60,6 +60,7 @@ export async function syncMaintenance(userId) {
         serviceDate: item.service_date,
         cost: Number(item.cost) || 0,
         odometer: Number(item.odometer) || null,
+        workshop: item.workshop || item.service_provider || '',
         notes: item.notes || '',
         createdAt: item.created_at,
       }))
