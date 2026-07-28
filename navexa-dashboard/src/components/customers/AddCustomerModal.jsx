@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { X, Edit3, Loader2, AlertCircle } from 'lucide-react'
-import { editCustomer, findByPhone } from '../../data/customerStore'
+import { X, UserPlus, Loader2, AlertCircle } from 'lucide-react'
+import { addCustomer, findByPhone } from '../../data/customerStore'
+import { useUser } from '../../context/UserContext'
 
-export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess }) {
+export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
+  const { currentUser } = useUser()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -21,24 +23,24 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
   const [notes, setNotes] = useState('')
 
   useEffect(() => {
-    if (isOpen && customer) {
+    if (isOpen) {
       setError('')
-      setName(customer.name || '')
-      setPhone(customer.phone || '')
-      setEmail(customer.email || '')
-      setCompanyName(customer.companyName || '')
-      setPreferredContactMethod(customer.preferredContactMethod || 'Phone')
-      setAddress(customer.address || '')
-      setCity(customer.city || '')
-      setState(customer.state || '')
-      setCountry(customer.country || 'India')
-      setPostalCode(customer.postalCode || '')
-      setStatus(customer.status || 'Active')
-      setNotes(customer.notes || '')
+      setName('')
+      setPhone('')
+      setEmail('')
+      setCompanyName('')
+      setPreferredContactMethod('Phone')
+      setAddress('')
+      setCity('')
+      setState('')
+      setCountry('India')
+      setPostalCode('')
+      setStatus('Active')
+      setNotes('')
     }
-  }, [isOpen, customer])
+  }, [isOpen])
 
-  if (!isOpen || !customer) return null
+  if (!isOpen) return null
 
   const validate = () => {
     if (!name.trim()) return 'Full Name is required.'
@@ -49,8 +51,8 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
     }
 
     const existing = findByPhone(phone)
-    if (existing && existing.id !== customer.id) {
-      return `Phone number "${phone.trim()}" is already registered to another customer (${existing.name}).`
+    if (existing) {
+      return `A customer with phone number "${phone.trim()}" already exists (${existing.name}).`
     }
 
     return null
@@ -70,26 +72,29 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
     setError('')
 
     try {
-      await editCustomer(customer.id, {
-        name,
-        phone,
-        email,
-        companyName,
-        preferredContactMethod,
-        address,
-        city,
-        state,
-        country,
-        postalCode,
-        status,
-        notes,
-      })
+      await addCustomer(
+        {
+          name,
+          phone,
+          email,
+          companyName,
+          preferredContactMethod,
+          address,
+          city,
+          state,
+          country,
+          postalCode,
+          status,
+          notes,
+        },
+        currentUser?.id
+      )
 
-      if (onSuccess) onSuccess('Customer updated successfully!')
+      if (onSuccess) onSuccess('Customer created successfully!')
       onClose()
     } catch (err) {
-      console.error('Error updating customer:', err)
-      setError(err.message || 'Failed to update customer.')
+      console.error('Error adding customer:', err)
+      setError(err.message || 'Failed to create customer.')
     } finally {
       setSaving(false)
     }
@@ -106,11 +111,11 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
         <div className="flex items-center justify-between border-b border-line pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-50 text-primary">
-              <Edit3 size={18} />
+              <UserPlus size={20} />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-ink">Edit Customer Profile</h3>
-              <p className="text-xs text-ink-soft">Update contact information and preferences.</p>
+              <h3 className="text-base font-extrabold text-ink">Add New Customer</h3>
+              <p className="text-xs text-ink-soft">Enter customer contact and CRM details.</p>
             </div>
           </div>
           <button
@@ -142,6 +147,7 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Anish Roy"
                 className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs text-ink outline-none transition-all focus:bg-surface focus:border-primary"
               />
             </div>
@@ -156,6 +162,7 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                placeholder="e.g. +91 98765 43210"
                 className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs text-ink outline-none transition-all focus:bg-surface focus:border-primary"
               />
             </div>
@@ -167,6 +174,7 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
                 type="text"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="e.g. TechCorp Solutions"
                 className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs text-ink outline-none transition-all focus:bg-surface focus:border-primary"
               />
             </div>
@@ -192,6 +200,7 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. anish@example.com"
                 className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs text-ink outline-none transition-all focus:bg-surface focus:border-primary"
               />
             </div>
@@ -216,6 +225,7 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
+                placeholder="Street address or landmark"
                 className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs text-ink outline-none transition-all focus:bg-surface focus:border-primary"
               />
             </div>
@@ -227,6 +237,7 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
                 type="text"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Kolkata"
                 className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs text-ink outline-none transition-all focus:bg-surface focus:border-primary"
               />
             </div>
@@ -238,6 +249,7 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
                 type="text"
                 value={state}
                 onChange={(e) => setState(e.target.value)}
+                placeholder="e.g. West Bengal"
                 className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs text-ink outline-none transition-all focus:bg-surface focus:border-primary"
               />
             </div>
@@ -249,6 +261,7 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
                 type="text"
                 value={postalCode}
                 onChange={(e) => setPostalCode(e.target.value)}
+                placeholder="e.g. 700001"
                 className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs text-ink num outline-none transition-all focus:bg-surface focus:border-primary"
               />
             </div>
@@ -260,6 +273,7 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
                 type="text"
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
+                placeholder="e.g. India"
                 className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs text-ink outline-none transition-all focus:bg-surface focus:border-primary"
               />
             </div>
@@ -271,6 +285,7 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
                 rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
+                placeholder="Special preferences, VIP status, billing instructions..."
                 className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs text-ink outline-none transition-all focus:bg-surface focus:border-primary"
               />
             </div>
@@ -299,7 +314,7 @@ export default function EditCustomerModal({ isOpen, customer, onClose, onSuccess
                   <span>Saving...</span>
                 </>
               ) : (
-                <span>Save Changes</span>
+                <span>Add Customer</span>
               )}
             </button>
           </div>

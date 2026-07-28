@@ -1,6 +1,6 @@
 /**
  * customerStore.js
- * ONE Centralized reactive mock store with localStorage persistence for Navexa customer data.
+ * Centralized reactive store for Navexa customer CRM with localStorage persistence and Supabase synchronization.
  *
  * Storage Key: navexa_customers
  */
@@ -17,10 +17,7 @@ export function normalisePhone(raw) {
   return raw.replace(/\s+/g, '').replace(/^(\+91|0)/, '')
 }
 
-// Initial canonical seed customer records
-const initialSeedCustomers = []
-
-/** Load customers from localStorage or fallback to initialSeedCustomers */
+/** Safe load customers from localStorage */
 function loadCustomersFromStorage() {
   if (typeof window === 'undefined') return []
   try {
@@ -37,7 +34,7 @@ function loadCustomersFromStorage() {
   return []
 }
 
-/** Save customers to localStorage */
+/** Safe save customers to localStorage */
 function persistCustomers() {
   if (typeof window === 'undefined') return
   try {
@@ -50,6 +47,20 @@ function persistCustomers() {
 /** @type {CustomerRecord[]} Central reactive array */
 export const liveCustomers = loadCustomersFromStorage()
 
+const listeners = new Set()
+
+export function subscribeCustomers(fn) {
+  listeners.add(fn)
+  return () => listeners.delete(fn)
+}
+
+function notify() {
+  persistCustomers()
+  const snap = [...liveCustomers]
+  listeners.forEach(fn => fn(snap))
+}
+
+/** Cloud synchronization from Supabase */
 export async function syncCustomers(userId) {
   try {
     const { data, error } = await supabase
@@ -65,266 +76,343 @@ export async function syncCustomers(userId) {
         name: item.name,
         phone: item.phone,
         email: item.email || '',
+        companyName: item.company_name || '',
+        preferredContactMethod: item.preferred_contact_method || 'Phone',
         address: item.address || '',
+        city: item.city || '',
+        state: item.state || '',
+        country: item.country || '',
+        postalCode: item.postal_code || '',
+        status: item.status || 'Active',
         notes: item.notes || '',
         createdBy: item.created_by,
         createdAt: item.created_at,
         updatedBy: item.updated_by,
         updatedAt: item.updated_at,
       }))
+
       liveCustomers.length = 0
       liveCustomers.push(...mapped)
-      persistCustomers()
-      
-      // Let listeners know
-      const snap = [...liveCustomers]
-      listeners.forEach(fn => fn(snap))
-    } else {
-      // Empty data in database, keep local store empty
-      liveCustomers.length = 0
-      persistCustomers()
-      
-      const snap = [...liveCustomers]
-      listeners.forEach(fn => fn(snap))
+      notify()
     }
   } catch (err) {
     console.error('Error syncing customers:', err)
   }
 }
 
-// ─── Subscription ─────────────────────────────────────────────────────────────
-const listeners = new Set()
-
-export function subscribeCustomers(fn) {
-  listeners.add(fn)
-  return () => listeners.delete(fn)
-}
-
-function notify() {
-  persistCustomers()
-  const snap = [...liveCustomers]
-  listeners.forEach(fn => fn(snap))
-}
-
-// ─── Queries & Helpers ────────────────────────────────────────────────────────
-
-/** Find customer by phone number, optionally excluding a specific customer ID */
-export function findByPhone(rawPhone, excludeId = null) {
-  const needle = normalisePhone(rawPhone)
-  if (!needle) return null
-  return liveCustomers.find(c => c.id !== excludeId && normalisePhone(c.phone) === needle) || null
-}
-
-/** Find customer by ID */
-export function getCustomerById(id) {
-  return liveCustomers.find(c => c.id === id) || null
-}
-
-/** Find customer by Name */
-export function getCustomerByName(name) {
-  if (!name) return null
-  return liveCustomers.find(c => c.name.toLowerCase() === name.toLowerCase()) || null
-}
-
-/** Get array of customer names for selectors */
+/** Query helpers */
 export function getCustomerNames() {
   return liveCustomers.map(c => c.name)
 }
 
-/** Get initials for avatar display */
-export function getInitials(name = '') {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+export function getCustomerByName(nameStr) {
+  if (!nameStr) return null
+  return liveCustomers.find(c => c.name.toLowerCase() === nameStr.toLowerCase()) || null
 }
 
-// ─── Customer Stats & Relationships ──────────────────────────────────────────
+export function findByPhone(phoneStr) {
+  const norm = normalisePhone(phoneStr)
+  if (!norm) return null
+  return liveCustomers.find(c => normalisePhone(c.phone) === norm) || null
+}
 
-/** Calculate stats for a given customer from liveTrips */
-export function getCustomerStats(customerNameOrId) {
-  if (!customerNameOrId) {
-    return { totalTrips: 0, upcomingTrips: 0, completedTrips: 0, totalTripValue: 0, lastTripDate: null, trips: [] }
+export function getInitials(name = '') {
+  if (!name) return 'C'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
   }
-  const needle = customerNameOrId.toLowerCase()
-  const customerTrips = liveTrips.filter(
-    t => (t.customerId && t.customerId.toLowerCase() === needle) ||
-         (t.customer && t.customer.toLowerCase() === needle)
-  )
+  return name.slice(0, 2).toUpperCase()
+}
 
-  const upcomingTrips = customerTrips.filter(t => t.status === 'Upcoming').length
-  const completedTrips = customerTrips.filter(t => t.status === 'Completed').length
-  const totalTripValue = customerTrips.reduce((sum, t) => sum + (t.fare || 0), 0)
+/**
+ * Customer 360° Profile Stats & Analytics
+ */
+export function getCustomer360Stats(customerName, customerId = null) {
+  const customerTrips = liveTrips.filter(t => {
+    if (customerId && t.customerId === customerId) return true
+    if (customerName && t.customer?.toLowerCase() === customerName.toLowerCase()) return true
+    return false
+  })
 
-  let lastTripDate = null
-  if (customerTrips.length > 0) {
-    const sorted = [...customerTrips].sort((a, b) => (b.tripDate || '').localeCompare(a.tripDate || ''))
-    lastTripDate = sorted[0].tripDate || null
-  }
+  const totalTrips = customerTrips.length
+  const completedTripsList = customerTrips.filter(t => t.status === 'Completed')
+  const completedTrips = completedTripsList.length
+  const cancelledTrips = customerTrips.filter(t => t.status === 'Cancelled').length
+  const upcomingTrips = customerTrips.filter(t => ['Booked', 'Confirmed', 'Driver Assigned', 'Vehicle Assigned', 'Started', 'Passenger Picked Up'].includes(t.status)).length
+
+  // Revenue & Fare
+  const lifetimeRevenue = completedTripsList.reduce((sum, t) => sum + (t.actualFare || t.fare || 0), 0)
+  const totalDistance = completedTripsList.reduce((sum, t) => sum + (t.estimatedDistance || 0), 0)
+  const avgTripValue = completedTrips > 0 ? Math.round(lifetimeRevenue / completedTrips) : 0
+
+  // Payment Stats
+  const totalPaid = customerTrips
+    .filter(t => t.paymentStatus === 'Paid')
+    .reduce((sum, t) => sum + (t.actualFare || t.fare || 0), 0)
+
+  const pendingAmount = customerTrips
+    .filter(t => t.paymentStatus !== 'Paid' && t.status !== 'Cancelled')
+    .reduce((sum, t) => sum + (t.actualFare || t.fare || 0), 0)
+
+  // Last trip & payment date
+  const sortedByDate = [...customerTrips].sort((a, b) => new Date(b.createdAt || b.tripDate) - new Date(a.createdAt || a.tripDate))
+  const lastTrip = sortedByDate[0] || null
+
+  // Favorite Locations Analysis
+  const pickupCounts = {}
+  const dropCounts = {}
+  customerTrips.forEach(t => {
+    if (t.pickupLocation) {
+      pickupCounts[t.pickupLocation] = (pickupCounts[t.pickupLocation] || 0) + 1
+    }
+    if (t.destination) {
+      dropCounts[t.destination] = (dropCounts[t.destination] || 0) + 1
+    }
+  })
+
+  const topPickup = Object.entries(pickupCounts).sort((a, b) => b[1] - a[1])[0]
+  const topDrop = Object.entries(dropCounts).sort((a, b) => b[1] - a[1])[0]
+
+  const favoritePickup = topPickup ? `${topPickup[0]} (${topPickup[1]} trip${topPickup[1] > 1 ? 's' : ''})` : 'None logged yet'
+  const favoriteDrop = topDrop ? `${topDrop[0]} (${topDrop[1]} trip${topDrop[1] > 1 ? 's' : ''})` : 'None logged yet'
 
   return {
-    totalTrips: customerTrips.length,
-    upcomingTrips,
+    customerTrips,
+    totalTrips,
     completedTrips,
-    totalTripValue,
-    lastTripDate,
-    trips: customerTrips,
+    cancelledTrips,
+    upcomingTrips,
+    totalDistance,
+    lifetimeRevenue,
+    avgTripValue,
+    totalPaid,
+    pendingAmount,
+    lastTrip,
+    favoritePickup,
+    favoriteDrop,
   }
 }
 
-/** Compute page summary metrics */
+/** Legacy support helper */
+export function getCustomerStats(customerName) {
+  const stats = getCustomer360Stats(customerName)
+  return {
+    totalTrips: stats.totalTrips,
+    completedTrips: stats.completedTrips,
+    upcomingTrips: stats.upcomingTrips,
+    lifetimeRevenue: stats.lifetimeRevenue,
+    lastTripDate: stats.lastTrip ? stats.lastTrip.tripDate : null,
+  }
+}
+
 export function computeCustomerSummary() {
   const total = liveCustomers.length
-  const uniqueUpcomingCustomers = new Set(
-    liveTrips.filter(t => t.status === 'Upcoming').map(t => t.customer?.toLowerCase())
-  )
-  const customersWithUpcoming = liveCustomers.filter(c => uniqueUpcomingCustomers.has(c.name.toLowerCase())).length
-  const newThisMonth = liveCustomers.filter(c => c._session || c.createdAt >= '2026-07-01').length
+  const active = liveCustomers.filter(c => c.status === 'Active').length
+  const inactive = liveCustomers.filter(c => c.status === 'Inactive').length
+  return { total, active, inactive }
+}
 
-  const recent = liveCustomers.slice(0, 4).map(c => ({
-    name:     c.name,
-    phone:    c.phone,
-    activity: c.notes || 'Customer profile active',
-  }))
+/** Advanced Filter & Sort Customers */
+export function filterAndSortCustomers(customersList, { search = '', statusTab = 'All', filterType = 'All', sortBy = 'Newest' }) {
+  let result = customersList.map(c => {
+    const stats = getCustomer360Stats(c.name, c.id)
+    return {
+      ...c,
+      stats,
+    }
+  })
 
-  return {
-    total,
-    newThisMonth,
-    customersWithUpcoming,
-    recent,
+  // Status Filter
+  if (statusTab !== 'All') {
+    result = result.filter(c => c.status === statusTab)
   }
+
+  // Filter Type: Pending Payments / Upcoming Trips
+  if (filterType === 'Pending Payments') {
+    result = result.filter(c => c.stats.pendingAmount > 0)
+  } else if (filterType === 'Upcoming Trips') {
+    result = result.filter(c => c.stats.upcomingTrips > 0)
+  }
+
+  // Instant Search: Name, Phone, Email, Business Name
+  if (search && search.trim()) {
+    const q = search.trim().toLowerCase()
+    result = result.filter(c => {
+      const haystack = `${c.name} ${c.phone} ${c.email || ''} ${c.companyName || ''} ${c.address || ''}`.toLowerCase()
+      return haystack.includes(q)
+    })
+  }
+
+  // Sorting
+  if (sortBy === 'Oldest') {
+    result.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
+  } else if (sortBy === 'Customer Name') {
+    result.sort((a, b) => a.name.localeCompare(b.name))
+  } else if (sortBy === 'Highest Revenue') {
+    result.sort((a, b) => b.stats.lifetimeRevenue - a.stats.lifetimeRevenue)
+  } else if (sortBy === 'Most Trips') {
+    result.sort((a, b) => b.stats.totalTrips - a.stats.totalTrips)
+  } else {
+    // Newest
+    result.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+  }
+
+  return result
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
-/** Add a validated customer record */
-export function addCustomer(record, userName = 'Banjo') {
-  const newCustomer = {
-    id:        `C-${Date.now()}`,
-    name:      record.name.trim(),
-    phone:     record.phone.trim(),
-    email:     record.email?.trim() || '',
-    address:   record.address?.trim() || '',
-    notes:     record.notes?.trim() || '',
-    createdBy: record.createdBy || 'U-01',
-    createdAt: new Date().toISOString(),
-    updatedBy: null,
-    updatedAt: null,
-    _session:  true,
+export async function addCustomer(record, userId) {
+  const normPhone = normalisePhone(record.phone)
+  const isDuplicate = liveCustomers.some(c => normalisePhone(c.phone) === normPhone)
+  if (isDuplicate) {
+    throw new Error(`Customer with phone number "${record.phone}" already exists.`)
   }
-  
+
+  const id = `CUST-${Date.now()}`
+  const now = new Date().toISOString()
+
+  const newCustomer = {
+    id,
+    name: record.name.trim(),
+    phone: record.phone.trim(),
+    email: record.email ? record.email.trim() : '',
+    companyName: record.companyName ? record.companyName.trim() : '',
+    preferredContactMethod: record.preferredContactMethod || 'Phone',
+    address: record.address ? record.address.trim() : '',
+    city: record.city ? record.city.trim() : '',
+    state: record.state ? record.state.trim() : '',
+    country: record.country ? record.country.trim() : '',
+    postalCode: record.postalCode ? record.postalCode.trim() : '',
+    status: record.status || 'Active',
+    notes: record.notes ? record.notes.trim() : '',
+    createdBy: 'Dispatcher',
+    createdAt: now,
+    updatedAt: now,
+  }
+
   liveCustomers.unshift(newCustomer)
+
   addActivity({
-    id:          Date.now(),
-    type:        'customer',
-    text:        `Customer added — ${newCustomer.name}`,
-    performedBy: userName,
-    time:        'Just now',
+    id: Date.now(),
+    type: 'customer',
+    text: `Customer profile created — ${newCustomer.name} (${newCustomer.phone})`,
+    performedBy: 'Dispatcher',
+    time: 'Just now',
   })
+
   notify()
 
-  // Save to Supabase in background
-  supabase.auth.getUser().then(({ data: { user } }) => {
-    if (user) {
-      supabase
-        .from('customers')
-        .insert({
-          id: newCustomer.id,
-          user_id: user.id,
-          name: newCustomer.name,
-          phone: newCustomer.phone,
-          email: newCustomer.email || null,
-          address: newCustomer.address || null,
-          notes: newCustomer.notes || null,
-          created_at: newCustomer.createdAt,
-          created_by: newCustomer.createdBy,
-        })
-        .then(({ error }) => {
-          if (error) console.error('Error inserting customer into Supabase:', error)
-        })
-    }
-  })
+  try {
+    const { error } = await supabase.from('customers').insert({
+      id: newCustomer.id,
+      user_id: userId,
+      name: newCustomer.name,
+      phone: newCustomer.phone,
+      email: newCustomer.email || null,
+      company_name: newCustomer.companyName || null,
+      preferred_contact_method: newCustomer.preferredContactMethod,
+      address: newCustomer.address || null,
+      city: newCustomer.city || null,
+      state: newCustomer.state || null,
+      country: newCustomer.country || null,
+      postal_code: newCustomer.postalCode || null,
+      status: newCustomer.status,
+      notes: newCustomer.notes || null,
+      created_at: newCustomer.createdAt,
+    })
+
+    if (error) console.error('Error inserting customer into Supabase:', error)
+  } catch (err) {
+    console.error('Failed to save customer to cloud:', err)
+  }
 
   return newCustomer
 }
 
-/** Edit an existing customer record */
-export function editCustomer(id, updates, userName = 'Banjo') {
+export async function editCustomer(id, updates) {
   const idx = liveCustomers.findIndex(c => c.id === id)
-  if (idx === -1) return null
+  if (idx === -1) throw new Error('Customer not found')
 
-  const oldName = liveCustomers[idx].name
-  const updatedCustomer = {
+  if (updates.phone) {
+    const normPhone = normalisePhone(updates.phone)
+    const isDuplicate = liveCustomers.some(c => c.id !== id && normalisePhone(c.phone) === normPhone)
+    if (isDuplicate) {
+      throw new Error(`Phone number "${updates.phone}" is already registered to another customer.`)
+    }
+  }
+
+  const now = new Date().toISOString()
+  const updated = {
     ...liveCustomers[idx],
-    name:      updates.name.trim(),
-    phone:     updates.phone.trim(),
-    email:     updates.email?.trim() || '',
-    address:   updates.address?.trim() || '',
-    notes:     updates.notes?.trim() || '',
-    updatedBy: 'U-01',
-    updatedAt: new Date().toISOString(),
+    ...updates,
+    updatedAt: now,
   }
 
-  liveCustomers[idx] = updatedCustomer
-
-  // Update trip customer names where customerId or customer name matches
-  if (oldName !== updatedCustomer.name) {
-    liveTrips.forEach(t => {
-      if (t.customerId === id || t.customer?.toLowerCase() === oldName.toLowerCase()) {
-        t.customer = updatedCustomer.name
-        t.customerId = id
-      }
-    })
-  }
+  liveCustomers[idx] = updated
 
   addActivity({
-    id:          Date.now(),
-    type:        'customer',
-    text:        `Customer updated — ${updatedCustomer.name}`,
-    performedBy: userName,
-    time:        'Just now',
+    id: Date.now(),
+    type: 'customer',
+    text: `Customer profile updated — ${updated.name}`,
+    performedBy: 'Dispatcher',
+    time: 'Just now',
   })
 
   notify()
 
-  // Save to Supabase in background
-  supabase
-    .from('customers')
-    .update({
-      name: updatedCustomer.name,
-      phone: updatedCustomer.phone,
-      email: updatedCustomer.email || null,
-      address: updatedCustomer.address || null,
-      notes: updatedCustomer.notes || null,
-      updated_at: updatedCustomer.updatedAt,
-      updated_by: updatedCustomer.updatedBy,
-    })
-    .eq('id', id)
-    .then(({ error }) => {
-      if (error) console.error('Error updating customer in Supabase:', error)
-    })
+  try {
+    const { error } = await supabase
+      .from('customers')
+      .update({
+        name: updated.name,
+        phone: updated.phone,
+        email: updated.email || null,
+        company_name: updated.companyName || null,
+        preferred_contact_method: updated.preferredContactMethod,
+        address: updated.address || null,
+        city: updated.city || null,
+        state: updated.state || null,
+        country: updated.country || null,
+        postal_code: updated.postalCode || null,
+        status: updated.status,
+        notes: updated.notes || null,
+        updated_at: now,
+      })
+      .eq('id', id)
 
-  return updatedCustomer
+    if (error) console.error('Error updating customer in Supabase:', error)
+  } catch (err) {
+    console.error('Failed to update customer in cloud:', err)
+  }
+
+  return updated
 }
 
-/** Filter customers helper */
-export function filterCustomers({ search = '', filterTab = 'All' }) {
-  const q = search.toLowerCase()
-  const upcomingSet = new Set(
-    liveTrips.filter(t => t.status === 'Upcoming').map(t => t.customer?.toLowerCase())
-  )
+export async function deleteCustomer(id) {
+  const idx = liveCustomers.findIndex(c => c.id === id)
+  if (idx === -1) return false
 
-  return liveCustomers.filter(c => {
-    if (filterTab === 'With Upcoming Trips' && !upcomingSet.has(c.name.toLowerCase())) {
-      return false
-    }
-    if (filterTab === 'Recently Added' && !c._session && c.createdAt < '2026-07-20') {
-      return false
-    }
-    if (q) {
-      const haystack = [c.name, c.phone, c.email, c.address].join(' ').toLowerCase()
-      if (!haystack.includes(q)) return false
-    }
-    return true
+  const removed = liveCustomers[idx]
+  liveCustomers.splice(idx, 1)
+
+  addActivity({
+    id: Date.now(),
+    type: 'customer',
+    text: `Customer deleted — ${removed.name}`,
+    performedBy: 'Dispatcher',
+    time: 'Just now',
   })
+
+  notify()
+
+  try {
+    const { error } = await supabase.from('customers').delete().eq('id', id)
+    if (error) console.error('Error deleting customer from Supabase:', error)
+  } catch (err) {
+    console.error('Failed to delete customer from cloud:', err)
+  }
+
+  return true
 }

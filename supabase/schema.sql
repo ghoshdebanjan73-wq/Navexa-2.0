@@ -9,17 +9,33 @@
 -- -----------------------------------------------------------------------------
 create table if not exists public.customers (
     id text primary key,
-    user_id uuid not null references auth.users(id) on delete cascade,
+    user_id uuid references auth.users(id) on delete cascade,
     name text not null,
     phone text not null,
     email text,
+    company_name text,
+    preferred_contact_method text default 'Phone',
     address text,
+    city text,
+    state text,
+    country text,
+    postal_code text,
+    status text default 'Active',
     notes text,
     created_at timestamptz not null default now(),
     created_by text,
     updated_at timestamptz,
     updated_by text
 );
+
+-- Migration helpers for customers table
+alter table public.customers add column if not exists company_name text;
+alter table public.customers add column if not exists preferred_contact_method text default 'Phone';
+alter table public.customers add column if not exists city text;
+alter table public.customers add column if not exists state text;
+alter table public.customers add column if not exists country text;
+alter table public.customers add column if not exists postal_code text;
+alter table public.customers add column if not exists status text default 'Active';
 
 -- Enable RLS
 alter table public.customers enable row level security;
