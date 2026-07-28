@@ -13,7 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
-  UserCheck
+  UserCheck,
+  History
 } from 'lucide-react'
 import { useUser } from '../../context/UserContext'
 
@@ -43,6 +44,7 @@ export default function Sidebar({ activeRoute: propActiveRoute, onNavigate }) {
   ]
 
   const managementNav = isStaff ? [] : [
+    { id: 'Activity', label: 'Activity Log', icon: History },
     { id: 'Users', label: 'Users', icon: Shield },
     { id: 'CompanyProfile', label: 'Company Profile', icon: Building2 },
   ]

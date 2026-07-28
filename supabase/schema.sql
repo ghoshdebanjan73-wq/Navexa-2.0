@@ -347,9 +347,22 @@ create table if not exists public.company_profile (
     logo_url text,
     currency text not null default 'INR',
     timezone text not null default 'Asia/Kolkata',
-    date_format text not null default '12h',
+    date_format text not null default 'DD/MM/YYYY',
+    time_format text not null default '12h',
     invoice_prefix text not null default 'NVX',
     starting_invoice_number text not null default '000001',
+    default_due_period text not null default '15',
+    default_notes text default 'Thank you for choosing Navexa.',
+    default_tax_rate text default '5',
+    notify_upcoming_trips boolean not null default true,
+    notify_vehicle_insurance boolean not null default true,
+    notify_vehicle_permit boolean not null default true,
+    notify_vehicle_fitness boolean not null default true,
+    notify_vehicle_pollution boolean not null default true,
+    notify_vehicle_service boolean not null default true,
+    notify_driver_license boolean not null default true,
+    notify_outstanding_payments boolean not null default true,
+    expiry_lead_time text not null default '7',
     created_at timestamptz not null default now(),
     updated_at timestamptz,
     created_by uuid references auth.users(id) on delete cascade
@@ -538,5 +551,46 @@ create policy "Allow all CRUD operations for authenticated users on notification
     using (true)
     with check (true);
 
--- Enable Realtime replication for all core application tables including notifications
-alter publication supabase_realtime set table customers, vehicles, trips, maintenance, payments, transactions, company_profile, drivers, invoices, finance_transactions, notifications;
+-- -----------------------------------------------------------------------------
+-- 13. AUDIT LOGS TABLE
+-- -----------------------------------------------------------------------------
+create table if not exists public.audit_logs (
+    id text primary key,
+    user_id uuid references auth.users(id) on delete set null,
+    user_name text not null default 'System',
+    user_role text not null default 'Admin',
+    action text not null check (action in ('CREATE', 'UPDATE', 'DELETE', 'STATUS_CHANGE', 'PAYMENT', 'LOGIN')),
+    entity_type text not null check (entity_type in ('Customer', 'Trip', 'Driver', 'Vehicle', 'Invoice', 'Finance', 'Settings', 'User')),
+    entity_id text,
+    entity_label text,
+    description text not null,
+    old_values jsonb,
+    new_values jsonb,
+    metadata jsonb,
+    created_at timestamptz not null default now()
+);
+
+-- Enable RLS
+alter table public.audit_logs enable row level security;
+
+-- Drop policies if exist to allow running script multiple times without error
+drop policy if exists "Allow read access for authenticated users on audit_logs" on public.audit_logs;
+drop policy if exists "Allow insert access for authenticated users on audit_logs" on public.audit_logs;
+
+-- Policies for audit_logs (Read for Admins, Insert-only append model)
+create policy "Allow read access for authenticated users on audit_logs"
+    on public.audit_logs for select
+    to authenticated
+    using (true);
+
+create policy "Allow insert access for authenticated users on audit_logs"
+    on public.audit_logs for insert
+    to authenticated
+    with check (true);
+
+-- Indexes for performance
+create index if not exists idx_audit_logs_created_at on public.audit_logs (created_at desc);
+create index if not exists idx_audit_logs_entity on public.audit_logs (entity_type, entity_id);
+
+-- Enable Realtime replication for all core application tables including notifications & audit_logs
+alter publication supabase_realtime set table customers, vehicles, trips, maintenance, payments, transactions, company_profile, drivers, invoices, finance_transactions, notifications, audit_logs;

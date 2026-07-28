@@ -8,6 +8,7 @@
 import { addActivity } from './transactionStore.js'
 import { liveDrivers } from './driverStore.js'
 import { liveVehicles } from './vehicleStore.js'
+import { logAuditEvent } from './auditStore.js'
 import { supabase } from '../lib/supabase'
 
 const STORAGE_KEY = 'navexa_trips'
@@ -343,6 +344,15 @@ export async function addTrip(record, userId) {
     text: `Trip created — ${newTrip.customer} (${newTrip.pickupLocation} ➔ ${newTrip.destination})`,
     performedBy: 'Dispatcher',
     time: 'Just now',
+  })
+
+  logAuditEvent({
+    action: 'CREATE',
+    entityType: 'Trip',
+    entityId: newTrip.id,
+    entityLabel: `Trip #${newTrip.id}`,
+    description: `Created trip #${newTrip.id} for ${newTrip.customer} (${newTrip.pickupLocation} ➔ ${newTrip.destination}).`,
+    newValues: { customer: newTrip.customer, fare: newTrip.fare, status: newTrip.status },
   })
 
   notify()

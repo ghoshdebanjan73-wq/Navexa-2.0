@@ -10,6 +10,7 @@ const ROUTE_PATHS = {
   Reports:   '/reports',
   Notifications: '/notifications',
   Search:    '/search',
+  Activity:  '/activity',
   Customers: '/customers',
   Vehicles:  '/vehicles',
   Users:     '/users',
@@ -30,6 +31,7 @@ const PATH_TO_ROUTE = {
   '/reports':   'Reports',
   '/notifications': 'Notifications',
   '/search':    'Search',
+  '/activity':  'Activity',
   '/customers': 'Customers',
   '/vehicles':  'Vehicles',
   '/users':     'Users',
@@ -55,6 +57,7 @@ export function getRouteFromLocation() {
     if (hash === 'reports') return 'Reports'
     if (hash === 'notifications') return 'Notifications'
     if (hash === 'search') return 'Search'
+    if (hash === 'activity' || hash === 'audit-logs') return 'Activity'
     if (hash === 'customers') return 'Customers'
     if (hash === 'vehicles') return 'Vehicles'
     if (hash === 'users') return 'Users'

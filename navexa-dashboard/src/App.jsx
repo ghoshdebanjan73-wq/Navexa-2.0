@@ -19,6 +19,7 @@ import ReportsPage from './pages/Reports'
 import NotificationsPage from './pages/Notifications'
 import SearchResultsPage from './pages/SearchResults'
 import SettingsPage from './pages/Settings'
+import ActivityLogPage from './pages/ActivityLog'
 import { Shield, User, Settings as SettingsIcon, Loader2 } from 'lucide-react'
 
 function AppContent() {
@@ -37,7 +38,7 @@ function AppContent() {
     } else {
       // Role protection - Redirect Staff users trying to visit Admin pages
       const isStaff = currentUser?.role === 'Staff'
-      if (isStaff && ['Finance', 'Reports', 'Customers', 'Users', 'Settings', 'CompanyProfile'].includes(activeRoute)) {
+      if (isStaff && ['Finance', 'Reports', 'Customers', 'Users', 'Settings', 'CompanyProfile', 'Activity'].includes(activeRoute)) {
         navigate('Dashboard')
       } else if (activeRoute === 'SignIn' || activeRoute === 'SignUp') {
         if (redirectToAfterLogin) {
@@ -85,6 +86,8 @@ function AppContent() {
         return <NotificationsPage />
       case 'Search':
         return <SearchResultsPage />
+      case 'Activity':
+        return <ActivityLogPage />
       case 'Vehicles':
         return <VehiclesPage />
       case 'Drivers':

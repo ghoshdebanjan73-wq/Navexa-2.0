@@ -7,6 +7,7 @@
 
 import { liveTrips } from './tripStore.js'
 import { addActivity } from './transactionStore.js'
+import { logAuditEvent } from './auditStore.js'
 import { supabase } from '../lib/supabase'
 
 const STORAGE_KEY = 'navexa_customers'
@@ -305,6 +306,15 @@ export async function addCustomer(record, userId) {
     text: `Customer profile created — ${newCustomer.name} (${newCustomer.phone})`,
     performedBy: 'Dispatcher',
     time: 'Just now',
+  })
+
+  logAuditEvent({
+    action: 'CREATE',
+    entityType: 'Customer',
+    entityId: newCustomer.id,
+    entityLabel: newCustomer.name,
+    description: `Created customer profile for ${newCustomer.name} (${newCustomer.phone}).`,
+    newValues: { name: newCustomer.name, phone: newCustomer.phone, company: newCustomer.companyName },
   })
 
   notify()
