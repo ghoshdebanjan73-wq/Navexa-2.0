@@ -4,6 +4,7 @@ import {
   Route,
   FileText,
   Receipt,
+  BarChart3,
   Users,
   Car,
   Shield,
@@ -32,6 +33,7 @@ export default function Sidebar({ activeRoute: propActiveRoute, onNavigate }) {
     { id: 'Invoices', label: 'Invoices', icon: FileText },
     ...(!isStaff ? [
       { id: 'Finance', label: 'Finance', icon: Receipt },
+      { id: 'Reports', label: 'Reports', icon: BarChart3 },
       { id: 'Customers', label: 'Customers', icon: Users }
     ] : []),
     { id: 'Vehicles', label: 'Vehicles', icon: Car },

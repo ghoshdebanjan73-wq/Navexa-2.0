@@ -15,6 +15,7 @@ import PlaceholderPage from './components/ui/PlaceholderPage'
 import CompanyProfilePage from './pages/CompanyProfile'
 import DriversPage from './pages/Drivers'
 import InvoicesPage from './pages/Invoices'
+import ReportsPage from './pages/Reports'
 import { Shield, User, Settings, Loader2 } from 'lucide-react'
 
 function AppContent() {
@@ -33,7 +34,7 @@ function AppContent() {
     } else {
       // Role protection - Redirect Staff users trying to visit Admin pages
       const isStaff = currentUser?.role === 'Staff'
-      if (isStaff && ['Finance', 'Customers', 'Users', 'Settings', 'CompanyProfile'].includes(activeRoute)) {
+      if (isStaff && ['Finance', 'Reports', 'Customers', 'Users', 'Settings', 'CompanyProfile'].includes(activeRoute)) {
         navigate('Dashboard')
       } else if (activeRoute === 'SignIn' || activeRoute === 'SignUp') {
         if (redirectToAfterLogin) {
@@ -75,6 +76,8 @@ function AppContent() {
         return <CustomersPage />
       case 'Finance':
         return <FinancePage />
+      case 'Reports':
+        return <ReportsPage />
       case 'Vehicles':
         return <VehiclesPage />
       case 'Drivers':
