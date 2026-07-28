@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { getCustomer360Stats, getInitials } from '../../data/customerStore'
 import { formatINR, subscribeTrips } from '../../data/tripStore'
+import { liveInvoices, subscribeInvoices } from '../../data/invoiceStore'
 import TripDetailPanel from '../trips/TripDetailPanel'
 import AddTripModal from '../trips/AddTripModal'
 
@@ -208,10 +209,10 @@ export default function CustomerDetailPanel({ customer, isOpen, onClose, onEdit,
             )}
           </div>
 
-          {/* SECTION 4: PAYMENT SUMMARY */}
+          {/* SECTION 4: PAYMENT & INVOICES SUMMARY */}
           <div className="rounded-2xl border border-line bg-surface p-4 space-y-3 shadow-2xs">
             <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary border-b border-line pb-2">
-              4. Payment Summary
+              4. Payment & Invoices Summary
             </h4>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
@@ -226,9 +227,31 @@ export default function CustomerDetailPanel({ customer, isOpen, onClose, onEdit,
               </div>
             </div>
 
-            <div className="rounded-xl border border-line bg-bg p-3 flex items-center justify-between text-xs">
-              <span className="font-semibold text-ink">Outstanding Invoices</span>
-              <span className="text-[11px] font-bold text-ink-soft">0 Invoices (Phase 3 Ready)</span>
+            {/* Customer Related Invoices */}
+            <div className="pt-2 border-t border-line space-y-2">
+              <p className="text-[11px] font-bold text-ink-soft uppercase">Customer Invoices ({liveInvoices.filter(i => i.customerId === customer.id || i.customerName === customer.name).length})</p>
+              {liveInvoices.filter(i => i.customerId === customer.id || i.customerName === customer.name).length === 0 ? (
+                <p className="text-xs text-ink-soft italic">No invoices generated yet for this customer.</p>
+              ) : (
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {liveInvoices.filter(i => i.customerId === customer.id || i.customerName === customer.name).map(inv => (
+                    <div key={inv.id} className="flex items-center justify-between rounded-xl bg-bg p-2.5 border border-line text-xs">
+                      <div>
+                        <p className="font-extrabold text-primary num">{inv.invoiceNumber}</p>
+                        <p className="text-[10px] text-ink-soft num">{inv.invoiceDate} • Due: {inv.dueDate}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-ink num">{formatINR(inv.totalAmount)}</p>
+                        <span className={`inline-flex rounded-full px-2 py-0.2 text-[9px] font-bold ${
+                          inv.paymentStatus === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                        }`}>
+                          {inv.paymentStatus}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

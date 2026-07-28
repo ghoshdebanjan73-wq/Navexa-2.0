@@ -422,5 +422,50 @@ create policy "Allow all CRUD operations for authenticated users on drivers"
     using (true)
     with check (true);
 
--- Enable Realtime replication for all core application tables including drivers
-alter publication supabase_realtime set table customers, vehicles, trips, maintenance, payments, transactions, company_profile, drivers;
+-- -----------------------------------------------------------------------------
+-- 10. INVOICES TABLE
+-- -----------------------------------------------------------------------------
+create table if not exists public.invoices (
+    id text primary key,
+    invoice_number text not null unique,
+    trip_id text references public.trips(id) on delete set null,
+    customer_id text references public.customers(id) on delete set null,
+    customer_name text not null,
+    customer_phone text,
+    customer_email text,
+    customer_address text,
+    invoice_date date not null default current_date,
+    due_date date not null,
+    subtotal numeric not null default 0,
+    tax_rate numeric default 0,
+    tax_amount numeric default 0,
+    total_amount numeric not null default 0,
+    amount_paid numeric default 0,
+    balance_due numeric default 0,
+    payment_status text not null default 'Draft',
+    payment_method text,
+    payment_date date,
+    reference_number text,
+    notes text,
+    company_details jsonb default '{}'::jsonb,
+    trip_details jsonb default '{}'::jsonb,
+    created_at timestamptz not null default now(),
+    created_by text,
+    user_id uuid references auth.users(id) on delete cascade
+);
+
+-- Enable RLS
+alter table public.invoices enable row level security;
+
+-- Drop policy if exists to allow running script multiple times without error
+drop policy if exists "Allow all CRUD operations for authenticated users on invoices" on public.invoices;
+
+-- Policies for invoices
+create policy "Allow all CRUD operations for authenticated users on invoices"
+    on public.invoices for all
+    to authenticated
+    using (true)
+    with check (true);
+
+-- Enable Realtime replication for all core application tables including invoices
+alter publication supabase_realtime set table customers, vehicles, trips, maintenance, payments, transactions, company_profile, drivers, invoices;

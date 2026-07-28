@@ -14,6 +14,7 @@ import SignUpPage from './pages/SignUp'
 import PlaceholderPage from './components/ui/PlaceholderPage'
 import CompanyProfilePage from './pages/CompanyProfile'
 import DriversPage from './pages/Drivers'
+import InvoicesPage from './pages/Invoices'
 import { Shield, User, Settings, Loader2 } from 'lucide-react'
 
 function AppContent() {
@@ -68,6 +69,8 @@ function AppContent() {
     switch (activeRoute) {
       case 'Trips':
         return <TripsPage />
+      case 'Invoices':
+        return <InvoicesPage />
       case 'Customers':
         return <CustomersPage />
       case 'Finance':

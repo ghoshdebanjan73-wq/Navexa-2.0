@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   LayoutGrid,
   Route,
+  FileText,
   Receipt,
   Users,
   Menu,
@@ -23,7 +24,7 @@ export default function BottomNav() {
   const { user, signOut } = useUser()
   const [moreOpen, setMoreOpen] = useState(false)
   const isStaff = user?.role === 'Staff'
-  
+
   const [showConfirmLogout, setShowConfirmLogout] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState('')
@@ -83,6 +84,19 @@ export default function BottomNav() {
         >
           <Route size={18} strokeWidth={activeRoute === 'Trips' ? 2.5 : 2} />
           <span>Trips</span>
+        </button>
+
+        {/* 3. Invoices */}
+        <button
+          type="button"
+          onClick={() => handleNav('Invoices')}
+          aria-label="Invoices"
+          className={`flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] font-semibold transition-colors cursor-pointer ${
+            activeRoute === 'Invoices' ? 'text-primary font-bold' : 'text-ink-soft hover:text-ink'
+          }`}
+        >
+          <FileText size={18} strokeWidth={activeRoute === 'Invoices' ? 2.5 : 2} />
+          <span>Invoices</span>
         </button>
 
         {/* 3. Finance / Vehicles for Staff */}

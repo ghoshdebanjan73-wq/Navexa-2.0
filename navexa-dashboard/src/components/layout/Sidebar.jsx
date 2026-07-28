@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   LayoutGrid,
   Route,
+  FileText,
   Receipt,
   Users,
   Car,
@@ -28,6 +29,7 @@ export default function Sidebar({ activeRoute: propActiveRoute, onNavigate }) {
   const mainNav = [
     { id: 'Dashboard', label: 'Dashboard', icon: LayoutGrid },
     { id: 'Trips', label: 'Trips', icon: Route },
+    { id: 'Invoices', label: 'Invoices', icon: FileText },
     ...(!isStaff ? [
       { id: 'Finance', label: 'Finance', icon: Receipt },
       { id: 'Customers', label: 'Customers', icon: Users }

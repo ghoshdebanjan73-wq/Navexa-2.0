@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Wallet, TrendingDown, Scale, Route, CheckCircle2 } from 'lucide-react'
+import { Wallet, TrendingDown, Scale, Route, CheckCircle2, FileText } from 'lucide-react'
 import StatCard from '../components/ui/StatCard'
 import WelcomeSection from '../components/dashboard/WelcomeSection'
 import QuickActions from '../components/dashboard/QuickActions'
@@ -14,12 +14,14 @@ import StaffDashboard from '../components/dashboard/StaffDashboard'
 import { useUser } from '../context/UserContext'
 import { computeSummary, subscribeSummary } from '../data/transactionStore'
 import { subscribeTrips, getTripCounts } from '../data/tripStore'
+import { getInvoiceStats, subscribeInvoices } from '../data/invoiceStore'
 
 export default function Dashboard({ onNavigate }) {
   const [modalType, setModalType] = useState(null)
   const [toastMessage, setToastMessage] = useState(null)
   const [summary, setSummary] = useState(computeSummary())
   const [upcomingCount, setUpcomingCount] = useState(getTripCounts().upcoming)
+  const [invoiceStats, setInvoiceStats] = useState(getInvoiceStats())
   const { currentUser } = useUser()
 
   useEffect(() => {
@@ -27,9 +29,13 @@ export default function Dashboard({ onNavigate }) {
     const unsubTrips = subscribeTrips(() => {
       setUpcomingCount(getTripCounts().upcoming)
     })
+    const unsubInvoices = subscribeInvoices(() => {
+      setInvoiceStats(getInvoiceStats())
+    })
     return () => {
       unsubSummary()
       unsubTrips()
+      unsubInvoices()
     }
   }, [])
 
@@ -68,12 +74,15 @@ export default function Dashboard({ onNavigate }) {
         <h3 className="text-xs font-bold uppercase tracking-wider text-ink-soft mb-2">
           Business Summary
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 lg:gap-5 w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4 lg:gap-5 w-full">
           <StatCard icon={Wallet}      title="Income"         {...summary.income} />
           <StatCard icon={TrendingDown} title="Expenses"      {...summary.expenses} />
           <StatCard icon={Scale}        title="Balance"       {...summary.balance} highlighted />
           <div onClick={handleGoToTrips} className="cursor-pointer">
             <StatCard icon={Route} title="Upcoming Trips" value={upcomingCount} trend="Schedule" direction="neutral" format="plain" />
+          </div>
+          <div onClick={() => onNavigate && onNavigate('Invoices')} className="cursor-pointer">
+            <StatCard icon={FileText} title="Total Invoices" value={invoiceStats.total} trend={`${invoiceStats.paidCount} Paid`} direction="up" format="plain" />
           </div>
         </div>
       </section>
