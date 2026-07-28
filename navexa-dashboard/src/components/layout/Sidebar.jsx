@@ -5,6 +5,7 @@ import {
   FileText,
   Receipt,
   BarChart3,
+  Bell,
   Users,
   Car,
   Shield,
@@ -38,6 +39,7 @@ export default function Sidebar({ activeRoute: propActiveRoute, onNavigate }) {
     ] : []),
     { id: 'Vehicles', label: 'Vehicles', icon: Car },
     { id: 'Drivers', label: 'Drivers', icon: UserCheck },
+    { id: 'Notifications', label: 'Notifications', icon: Bell },
   ]
 
   const managementNav = isStaff ? [] : [

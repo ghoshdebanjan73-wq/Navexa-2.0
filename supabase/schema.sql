@@ -504,5 +504,39 @@ create policy "Allow all CRUD operations for authenticated users on finance_tran
     using (true)
     with check (true);
 
--- Enable Realtime replication for all core application tables including finance_transactions
-alter publication supabase_realtime set table customers, vehicles, trips, maintenance, payments, transactions, company_profile, drivers, invoices, finance_transactions;
+-- -----------------------------------------------------------------------------
+-- 12. NOTIFICATIONS TABLE
+-- -----------------------------------------------------------------------------
+create table if not exists public.notifications (
+    id text primary key,
+    type text not null check (type in ('trip', 'payment', 'vehicle', 'driver', 'system')),
+    severity text not null default 'info' check (severity in ('info', 'warning', 'critical')),
+    title text not null,
+    message text not null,
+    is_read boolean not null default false,
+    is_dismissed boolean not null default false,
+    deduplication_key text not null unique,
+    trip_id text references public.trips(id) on delete cascade,
+    invoice_id text references public.invoices(id) on delete cascade,
+    vehicle_id text references public.vehicles(id) on delete cascade,
+    driver_id text references public.drivers(id) on delete cascade,
+    created_at timestamptz not null default now(),
+    read_at timestamptz,
+    user_id uuid references auth.users(id) on delete cascade
+);
+
+-- Enable RLS
+alter table public.notifications enable row level security;
+
+-- Drop policy if exists to allow running script multiple times without error
+drop policy if exists "Allow all CRUD operations for authenticated users on notifications" on public.notifications;
+
+-- Policies for notifications
+create policy "Allow all CRUD operations for authenticated users on notifications"
+    on public.notifications for all
+    to authenticated
+    using (true)
+    with check (true);
+
+-- Enable Realtime replication for all core application tables including notifications
+alter publication supabase_realtime set table customers, vehicles, trips, maintenance, payments, transactions, company_profile, drivers, invoices, finance_transactions, notifications;

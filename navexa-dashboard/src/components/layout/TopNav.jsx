@@ -9,11 +9,23 @@ import {
   X,
   Clock,
   CheckCircle2,
-  Receipt
+  Receipt,
+  Route,
+  Car,
+  UserCheck,
+  AlertTriangle,
+  Info,
+  AlertCircle
 } from 'lucide-react'
 import { useUser } from '../../context/UserContext'
 import { useRouter } from '../../context/RouterContext'
 import ConfirmDialog from '../trips/ConfirmDialog'
+import {
+  liveNotifications, subscribeNotifications, markAsRead,
+  markAllAsRead, getUnreadCount, syncNotifications
+} from '../../data/notificationStore'
+import { liveTrips } from '../../data/tripStore'
+import TripDetailPanel from '../trips/TripDetailPanel'
 
 export default function TopNav({ pageTitle = 'Dashboard' }) {
   const { user, initials, signOut } = useUser()
@@ -29,36 +41,43 @@ export default function TopNav({ pageTitle = 'Dashboard' }) {
   const notifRef = useRef(null)
   const profileRef = useRef(null)
 
-  // Notifications mock items
-  const sampleNotifications = [
-    {
-      id: 1,
-      icon: Clock,
-      iconBg: 'bg-sky-50 text-sky-600',
-      title: 'Upcoming Trip',
-      desc: 'Trip to Kolkata starts tomorrow at 10:30 AM',
-      time: '10 min ago',
-      unread: true,
-    },
-    {
-      id: 2,
-      icon: CheckCircle2,
-      iconBg: 'bg-emerald-50 text-emerald-600',
-      title: 'Payment Received',
-      desc: '₹3,500 received for Kolkata Trip',
-      time: '42 min ago',
-      unread: true,
-    },
-    {
-      id: 3,
-      icon: Receipt,
-      iconBg: 'bg-rose-50 text-rose-600',
-      title: 'Expense Added',
-      desc: 'Fuel expense of ₹2,000 was recorded',
-      time: '1 hr ago',
-      unread: false,
-    },
-  ]
+  const [notifications, setNotifications] = useState([...liveNotifications])
+  const [selectedTripForModal, setSelectedTripForModal] = useState(null)
+
+  useEffect(() => {
+    syncNotifications(user?.id)
+    const unsub = subscribeNotifications((updated) => setNotifications([...updated]))
+    return () => unsub()
+  }, [user?.id])
+
+  const unreadCount = getUnreadCount(user?.role)
+  const isStaff = user?.role === 'Staff'
+
+  const activeNotifs = notifications
+    .filter(n => !n.isDismissed && (!isStaff || n.type !== 'payment'))
+    .slice(0, 5)
+
+  const handleNotifClick = (n) => {
+    markAsRead(n.id)
+    setNotifOpen(false)
+
+    if (n.tripId) {
+      const match = liveTrips.find(t => t.id === n.tripId)
+      if (match) {
+        setSelectedTripForModal(match)
+        return
+      }
+      navigate('Trips')
+    } else if (n.invoiceId) {
+      navigate('Invoices')
+    } else if (n.vehicleId) {
+      navigate('Vehicles')
+    } else if (n.driverId) {
+      navigate('Drivers')
+    } else {
+      navigate('Notifications')
+    }
+  }
 
   // Outside click & Escape key listeners
   useEffect(() => {
@@ -175,43 +194,84 @@ export default function TopNav({ pageTitle = 'Dashboard' }) {
               aria-label="Notifications"
             >
               <Bell size={17} />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-surface" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white shadow-xs">
+                  {unreadCount}
+                </span>
+              )}
             </button>
 
             {/* Notification Dropdown Popover */}
             {notifOpen && (
-              <div className="absolute right-0 mt-2 w-80 rounded-xl border border-line bg-surface p-2 shadow-lg animate-scaleUp z-50">
-                <div className="flex items-center justify-between border-b border-line px-2 py-1.5 pb-2">
-                  <p className="text-xs font-bold text-ink">Notifications</p>
-                  <span className="rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-bold text-primary">
-                    2 unread
-                  </span>
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl border border-line bg-surface p-2.5 shadow-pop animate-scaleUp z-50">
+                <div className="flex items-center justify-between border-b border-line px-2 pb-2">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-extrabold text-ink">Notifications</p>
+                    {unreadCount > 0 && (
+                      <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={() => markAllAsRead()}
+                      className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
                 </div>
-                <div className="max-h-64 overflow-y-auto mt-1 space-y-1">
-                  {sampleNotifications.map((n) => {
-                    const Icon = n.icon
-                    return (
-                      <div
-                        key={n.id}
-                        className="flex items-start gap-2.5 rounded-lg p-2 transition-colors hover:bg-slate-50 cursor-pointer"
-                      >
-                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg mt-0.5 ${n.iconBg}`}>
-                          <Icon size={14} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs font-bold text-ink truncate">{n.title}</p>
-                            {n.unread && <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />}
+
+                <div className="max-h-72 overflow-y-auto mt-1 divide-y divide-line/60">
+                  {activeNotifs.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-ink-soft space-y-1">
+                      <p className="font-bold text-ink">You're all caught up! 🎉</p>
+                      <p className="text-[11px]">No new notifications right now.</p>
+                    </div>
+                  ) : (
+                    activeNotifs.map((n) => {
+                      const IconComponent = n.type === 'trip' ? Route : n.type === 'payment' ? Receipt : n.type === 'vehicle' ? Car : n.type === 'driver' ? UserCheck : Bell
+                      const iconBg = n.severity === 'critical' ? 'bg-rose-50 text-rose-600' : n.severity === 'warning' ? 'bg-amber-50 text-amber-600' : 'bg-sky-50 text-sky-600'
+
+                      return (
+                        <div
+                          key={n.id}
+                          onClick={() => handleNotifClick(n)}
+                          className={`flex items-start gap-3 p-2.5 transition-colors hover:bg-slate-50 cursor-pointer rounded-lg ${!n.isRead ? 'bg-primary-50/20' : ''}`}
+                        >
+                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl mt-0.5 ${iconBg}`}>
+                            <IconComponent size={15} />
                           </div>
-                          <p className="text-[11px] text-ink-soft leading-tight mt-0.5">{n.desc}</p>
-                          <p className="text-[10px] text-ink-soft/70 mt-1">{n.time}</p>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <p className="text-xs font-bold text-ink truncate">{n.title}</p>
+                              {!n.isRead && <span className="h-2 w-2 rounded-full bg-primary shrink-0" />}
+                            </div>
+                            <p className="text-[11px] text-ink-soft leading-tight mt-0.5 line-clamp-2">{n.message}</p>
+                            <div className="flex items-center justify-between mt-1">
+                              <span className="text-[10px] text-ink-soft/70 num">
+                                {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded ${
+                                n.severity === 'critical' ? 'bg-rose-100 text-rose-800' : n.severity === 'warning' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+                              }`}>
+                                {n.severity}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })
+                  )}
                 </div>
-                <div className="border-t border-line mt-1 pt-1.5 text-center">
-                  <button className="text-[11px] font-bold text-accent hover:underline">
+
+                <div className="border-t border-line mt-1.5 pt-2 text-center">
+                  <button
+                    onClick={() => { setNotifOpen(false); navigate('Notifications') }}
+                    className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                  >
                     View All Notifications
                   </button>
                 </div>
@@ -289,6 +349,15 @@ export default function TopNav({ pageTitle = 'Dashboard' }) {
               setLogoutError('')
             }
           }}
+        />
+      )}
+
+      {/* Trip Details Modal (Triggered by Notification Click) */}
+      {selectedTripForModal && (
+        <TripDetailPanel
+          trip={selectedTripForModal}
+          isOpen={!!selectedTripForModal}
+          onClose={() => setSelectedTripForModal(null)}
         />
       )}
     </header>
