@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Plus, Loader2, IndianRupee, Calendar, Clock, Lock } from 'lucide-react'
+import { Plus, Loader2, IndianRupee, Calendar, Clock, Lock, User, AlertCircle } from 'lucide-react'
 import { useUser } from '../../context/UserContext'
 import { liveVehicles, subscribeVehicles, getEffectiveVehicleStatus } from '../../data/vehicleStore'
-import { addTrip, editTrip, PAYMENT_STATUSES, formatINR } from '../../data/tripStore'
+import { liveDrivers, subscribeDrivers } from '../../data/driverStore'
+import { addTrip, editTrip, PAYMENT_STATUSES, formatINR, checkTripConflicts } from '../../data/tripStore'
 import { getCustomerNames, subscribeCustomers, addCustomer, findByPhone, getCustomerByName } from '../../data/customerStore'
 import { getTripAmountPaid } from '../../data/paymentStore'
-import { addActivity } from '../../data/transactionStore'
 
-// Helper: today in YYYY-MM-DD format for <input type="date">
 const todayISO = () => {
   const d = new Date()
   const year = d.getFullYear()
@@ -16,7 +15,6 @@ const todayISO = () => {
   return `${year}-${month}-${day}`
 }
 
-/** Convert formatted trip date ("27 Jul" or "27 Jul 2026") to YYYY-MM-DD for date input */
 export function parseDateToISO(dateStr) {
   if (!dateStr) return todayISO()
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr
@@ -36,7 +34,6 @@ export function parseDateToISO(dateStr) {
   return todayISO()
 }
 
-/** Convert formatted trip time ("10:30 AM" or "02:30 PM") to 24h "HH:MM" for time input */
 export function parseTimeTo24h(timeStr) {
   if (!timeStr) return '10:30'
   if (/^\d{2}:\d{2}$/.test(timeStr)) return timeStr
@@ -55,7 +52,6 @@ export function parseTimeTo24h(timeStr) {
   return '10:30'
 }
 
-// Helper: convert YYYY-MM-DD to "27 Jul" or "27 Jul 2026"
 export function formatTripDate(isoStr) {
   if (!isoStr) return ''
   const parts = isoStr.split('-')
@@ -66,7 +62,6 @@ export function formatTripDate(isoStr) {
   return dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
 }
 
-// Helper: convert 24h "14:30" to 12h "02:30 PM"
 export function formatTripTime(time24) {
   if (!time24) return ''
   const parts = time24.split(':')
@@ -102,7 +97,7 @@ function FieldError({ msg }) {
   return <p className="mt-1 text-[11px] font-semibold text-rose-600">{msg}</p>
 }
 
-// ─── Inline Add Customer Form ──────────────────────────────────────────────────
+// ─── Inline Add Customer Subform ─────────────────────────────────────────────
 function AddCustomerSubForm({ onCustomerAdded, onCancel, user }) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -239,58 +234,72 @@ function AddCustomerSubForm({ onCustomerAdded, onCancel, user }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MAIN CANONICAL TRIP FORM (Supports Create & Edit Modes)
+// MAIN TRIP FORM
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function TripForm({ onClose, onSaved, initialCustomer = '', tripToEdit = null, user }) {
   const isEditMode = Boolean(tripToEdit)
 
   const [customerNames, setCustomerNames] = useState(getCustomerNames())
   const [fleetVehicles, setFleetVehicles] = useState([...liveVehicles])
+  const [fleetDrivers, setFleetDrivers]   = useState([...liveDrivers])
   const [showAddCustomer, setShowAddCustomer] = useState(false)
 
-  // Subscribe to customerStore & vehicleStore
   useEffect(() => {
     const unsubCust = subscribeCustomers(() => setCustomerNames(getCustomerNames()))
     const unsubVeh  = subscribeVehicles(snap => setFleetVehicles([...snap]))
+    const unsubDrv  = subscribeDrivers(snap => setFleetDrivers([...snap]))
     return () => {
       unsubCust()
       unsubVeh()
+      unsubDrv()
     }
   }, [])
 
-  // Initial State: Pre-fill if tripToEdit is provided
-  const [customer,      setCustomer]      = useState(tripToEdit?.customer || initialCustomer)
-  const [pickup,        setPickup]        = useState(tripToEdit?.pickupLocation || '')
-  const [destination,   setDestination]   = useState(tripToEdit?.destination || '')
-  const [tripDate,      setTripDate]      = useState(tripToEdit ? parseDateToISO(tripToEdit.tripDate) : todayISO())
-  const [tripTime,      setTripTime]      = useState(tripToEdit ? parseTimeTo24h(tripToEdit.tripTime) : '10:30')
-  const [vehicle,       setVehicle]       = useState(tripToEdit?.vehicle || '')
-  const [fare,          setFare]          = useState(tripToEdit ? String(tripToEdit.fare) : '')
+  // Fields
+  const [customer, setCustomer] = useState(tripToEdit?.customer || initialCustomer)
+  const [pickup, setPickup] = useState(tripToEdit?.pickupLocation || '')
+  const [destination, setDestination] = useState(tripToEdit?.destination || '')
+  const [tripDate, setTripDate] = useState(tripToEdit ? parseDateToISO(tripToEdit.tripDate) : todayISO())
+  const [tripTime, setTripTime] = useState(tripToEdit ? parseTimeTo24h(tripToEdit.tripTime) : '10:30')
+  const [vehicleId, setVehicleId] = useState(tripToEdit?.vehicleId || '')
+  const [driverId, setDriverId] = useState(tripToEdit?.driverId || '')
+  const [tripType, setTripType] = useState(tripToEdit?.tripType || 'One Way')
+  const [estimatedDistance, setEstimatedDistance] = useState(tripToEdit?.estimatedDistance || '')
+  const [fare, setFare] = useState(tripToEdit ? String(tripToEdit.fare) : '')
   const [paymentStatus, setPaymentStatus] = useState(tripToEdit?.paymentStatus || 'Unpaid')
-  const [notes,         setNotes]         = useState(tripToEdit?.notes || '')
-  const [errors,        setErrors]        = useState({})
-  const [isSubmitting,  setIsSubmitting]  = useState(false)
+  const [notes, setNotes] = useState(tripToEdit?.notes || '')
+  const [errors, setErrors] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const validate = () => {
     const e = {}
-    if (!customer)           e.customer    = 'Select a customer.'
-    if (!pickup.trim())      e.pickup      = 'Enter a pickup location.'
+    if (!customer) e.customer = 'Select a customer.'
+    if (!pickup.trim()) e.pickup = 'Enter a pickup location.'
     if (!destination.trim()) e.destination = 'Enter a destination.'
-    if (!tripDate)           e.tripDate    = 'Select a trip date.'
-    if (!tripTime)           e.tripTime    = 'Select a trip time.'
-    if (!vehicle)            e.vehicle     = 'Select a vehicle.'
+    if (!tripDate) e.tripDate = 'Select a trip date.'
+    if (!tripTime) e.tripTime = 'Select a trip time.'
+    if (!vehicleId) e.vehicle = 'Select a vehicle.'
+    if (!driverId) e.driver = 'Select a driver.'
     if (!fare || Number(fare) <= 0) {
       e.fare = 'Enter a valid fare.'
-    } else if (isEditMode && tripToEdit) {
-      const amountPaid = getTripAmountPaid(tripToEdit.id, tripToEdit.fare, tripToEdit.paymentStatus)
-      if (amountPaid > 0 && Number(fare) < amountPaid) {
-        e.fare = `Fare cannot be less than the amount already paid (${formatINR(amountPaid)}).`
-      }
     }
+
+    // Check conflict
+    const conflictMsg = checkTripConflicts({
+      tripId: tripToEdit?.id || null,
+      driverId,
+      vehicleId,
+      tripDate,
+    })
+
+    if (conflictMsg) {
+      e.conflict = conflictMsg
+    }
+
     return e
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
@@ -298,55 +307,48 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
     setErrors({})
     setIsSubmitting(true)
 
-    setTimeout(() => {
-      const vehicleObj = fleetVehicles.find(v => v.name === vehicle || v.id === vehicle)
+    try {
+      const selectedVeh = fleetVehicles.find(v => v.id === vehicleId)
+      const selectedDrv = fleetDrivers.find(d => d.id === driverId)
       const customerObj = getCustomerByName(customer)
       const formattedDateStr = formatTripDate(tripDate)
       const formattedTimeStr = formatTripTime(tripTime)
 
-      if (isEditMode) {
-        // Edit mode: mutate existing trip record by ID
-        editTrip(tripToEdit.id, {
-          customerId:     customerObj?.id || tripToEdit.customerId || '',
-          customer,
-          pickupLocation: pickup.trim(),
-          destination:    destination.trim(),
-          tripDate:       formattedDateStr,
-          tripTime:       formattedTimeStr,
-          vehicle,
-          vehicleId:      vehicleObj?.id || tripToEdit.vehicleId || '',
-          vehicleReg:     vehicleObj?.reg || tripToEdit.vehicleReg || '',
-          fare:           Number(fare),
-          paymentStatus,
-          notes:          notes.trim(),
-        }, user?.name || 'Banjo')
+      const payload = {
+        customer,
+        customerId: customerObj?.id || '',
+        pickupLocation: pickup.trim(),
+        destination: destination.trim(),
+        tripDate: formattedDateStr,
+        tripTime: formattedTimeStr,
+        vehicle: selectedVeh ? selectedVeh.name : 'Unassigned',
+        vehicleId,
+        vehicleReg: selectedVeh ? selectedVeh.reg : '',
+        driverId,
+        driverName: selectedDrv ? selectedDrv.fullName : 'Unassigned',
+        driverPhone: selectedDrv ? selectedDrv.phone : '',
+        tripType,
+        estimatedDistance: estimatedDistance ? Number(estimatedDistance) : null,
+        fare: Number(fare),
+        paymentStatus,
+        notes: notes.trim(),
+      }
 
-        setIsSubmitting(false)
+      if (isEditMode) {
+        await editTrip(tripToEdit.id, payload, user?.name || 'Banjo')
         if (onSaved) onSaved('Trip updated successfully.')
       } else {
-        // Create mode: add new trip record
-        addTrip({
-          customer,
-          customerId:     customerObj?.id || '',
-          pickupLocation: pickup.trim(),
-          destination:    destination.trim(),
-          tripDate:       formattedDateStr,
-          tripTime:       formattedTimeStr,
-          vehicle,
-          vehicleId:      vehicleObj?.id || '',
-          vehicleReg:     vehicleObj?.reg || '',
-          fare:           Number(fare),
-          paymentStatus,
-          notes:          notes.trim(),
-          createdBy:      user?.id || 'U-01',
-        }, user?.name || 'Banjo')
-
-        setIsSubmitting(false)
+        await addTrip(payload, user?.id || 'U-01')
         if (onSaved) onSaved('Trip added successfully.')
       }
 
       if (onClose) onClose()
-    }, 350)
+    } catch (err) {
+      console.error('Error saving trip:', err)
+      setErrors({ conflict: err.message || 'Failed to save trip.' })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (showAddCustomer) {
@@ -362,16 +364,21 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
     )
   }
 
-  const isOngoing = tripToEdit?.status === 'Ongoing'
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4 animate-fadeIn" noValidate>
+      
+      {/* Global Conflict Error Alert */}
+      {errors.conflict && (
+        <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+          <AlertCircle size={16} className="shrink-0" />
+          <span>{errors.conflict}</span>
+        </div>
+      )}
+
       {/* 1. Customer Selection */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label className="block text-xs font-bold text-ink">
-            Customer <span className="text-rose-500">*</span>
-          </label>
+          <FieldLabel required>Customer</FieldLabel>
           <button
             type="button"
             onClick={() => setShowAddCustomer(true)}
@@ -385,7 +392,7 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
           onChange={e => {
             if (e.target.value === '__add_new__') { setShowAddCustomer(true); return }
             setCustomer(e.target.value)
-            setErrors(p => ({ ...p, customer: null }))
+            setErrors(p => ({ ...p, customer: null, conflict: null }))
           }}
           className={fieldCls(errors.customer)}
         >
@@ -396,25 +403,25 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
         <FieldError msg={errors.customer} />
       </div>
 
-      {/* 2. Pickup + Destination */}
+      {/* 2. Pickup & Drop Locations */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
           <FieldLabel required>Pickup Location</FieldLabel>
           <input
             type="text"
             value={pickup}
-            placeholder="e.g. Hooghly"
+            placeholder="e.g. Airport Gate 3"
             onChange={e => { setPickup(e.target.value); setErrors(p => ({ ...p, pickup: null })) }}
             className={fieldCls(errors.pickup)}
           />
           <FieldError msg={errors.pickup} />
         </div>
         <div>
-          <FieldLabel required>Destination</FieldLabel>
+          <FieldLabel required>Drop Location (Destination)</FieldLabel>
           <input
             type="text"
             value={destination}
-            placeholder="e.g. Kolkata"
+            placeholder="e.g. Park Street, Kolkata"
             onChange={e => { setDestination(e.target.value); setErrors(p => ({ ...p, destination: null })) }}
             className={fieldCls(errors.destination)}
           />
@@ -422,78 +429,105 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
         </div>
       </div>
 
-      {/* 3. Trip Date + Trip Time (Calendar & Time pickers) */}
+      {/* 3. Trip Date & Pickup Time */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
           <FieldLabel required>Trip Date</FieldLabel>
-          <div className="relative">
-            <input
-              type="date"
-              value={tripDate}
-              onChange={e => { setTripDate(e.target.value); setErrors(p => ({ ...p, tripDate: null })) }}
-              className={fieldCls(errors.tripDate)}
-            />
-          </div>
+          <input
+            type="date"
+            value={tripDate}
+            onChange={e => { setTripDate(e.target.value); setErrors(p => ({ ...p, tripDate: null, conflict: null })) }}
+            className={fieldCls(errors.tripDate)}
+          />
           <FieldError msg={errors.tripDate} />
         </div>
 
         <div>
-          <FieldLabel required>Trip Time</FieldLabel>
-          <div className="relative">
-            <input
-              type="time"
-              value={tripTime}
-              onChange={e => { setTripTime(e.target.value); setErrors(p => ({ ...p, tripTime: null })) }}
-              className={fieldCls(errors.tripTime)}
-            />
-          </div>
+          <FieldLabel required>Pickup Time</FieldLabel>
+          <input
+            type="time"
+            value={tripTime}
+            onChange={e => { setTripTime(e.target.value); setErrors(p => ({ ...p, tripTime: null })) }}
+            className={fieldCls(errors.tripTime)}
+          />
           <FieldError msg={errors.tripTime} />
         </div>
       </div>
 
-      {/* 4. Vehicle Selection & Fare */}
+      {/* 4. Vehicle & Driver Selection */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
           <FieldLabel required>Vehicle</FieldLabel>
-          {isOngoing ? (
-            <div className="rounded-xl border border-line bg-bg p-2.5">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-ink">
-                <Lock size={13} className="text-amber-600" />
-                <span>{vehicle} {tripToEdit?.vehicleReg ? `(${tripToEdit.vehicleReg})` : ''}</span>
-              </div>
-              <p className="text-[11px] font-semibold text-amber-700 mt-0.5">
-                Vehicle cannot be changed while the trip is ongoing.
-              </p>
-            </div>
-          ) : (
-            <select
-              value={vehicle}
-              onChange={e => { setVehicle(e.target.value); setErrors(p => ({ ...p, vehicle: null })) }}
-              className={fieldCls(errors.vehicle)}
-            >
-              <option value="">— Select vehicle —</option>
-              {fleetVehicles.map(v => {
-                const effStatus = getEffectiveVehicleStatus(v)
-                const isCurrentlyAssigned = (tripToEdit?.vehicle && v.name === tripToEdit.vehicle) || (tripToEdit?.vehicleId && v.id === tripToEdit.vehicleId)
-                const isDisabled = effStatus !== 'Available' && !isCurrentlyAssigned
-
-                return (
-                  <option
-                    key={v.id}
-                    value={v.name}
-                    disabled={isDisabled}
-                  >
-                    {v.name} ({v.reg}) — {effStatus}{isDisabled ? ' (Unavailable)' : ''}
-                  </option>
-                )
-              })}
-            </select>
-          )}
+          <select
+            value={vehicleId}
+            onChange={e => { setVehicleId(e.target.value); setErrors(p => ({ ...p, vehicle: null, conflict: null })) }}
+            className={fieldCls(errors.vehicle)}
+          >
+            <option value="">— Select vehicle —</option>
+            {fleetVehicles.map(v => (
+              <option key={v.id} value={v.id} disabled={v.status === 'Inactive' || v.status === 'Maintenance'}>
+                {v.name} ({v.reg}) — {v.status}
+              </option>
+            ))}
+          </select>
           <FieldError msg={errors.vehicle} />
         </div>
 
         <div>
-          <FieldLabel required>Fare (₹)</FieldLabel>
+          <FieldLabel required>Driver</FieldLabel>
+          <select
+            value={driverId}
+            onChange={e => { setDriverId(e.target.value); setErrors(p => ({ ...p, driver: null, conflict: null })) }}
+            className={fieldCls(errors.driver)}
+          >
+            <option value="">— Select driver —</option>
+            {fleetDrivers.length > 0 ? (
+              fleetDrivers.map(d => (
+                <option key={d.id} value={d.id} disabled={d.status === 'Inactive'}>
+                  {d.fullName} ({d.phone}) — {d.status}
+                </option>
+              ))
+            ) : (
+              <option value="" disabled>No drivers available</option>
+            )}
+          </select>
+          <FieldError msg={errors.driver} />
+        </div>
+      </div>
+
+      {/* 5. Trip Type & Distance */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <FieldLabel>Trip Type</FieldLabel>
+          <select
+            value={tripType}
+            onChange={e => setTripType(e.target.value)}
+            className={fieldCls(false)}
+          >
+            <option value="One Way">One Way</option>
+            <option value="Round Trip">Round Trip</option>
+            <option value="Airport">Airport</option>
+            <option value="Outstation">Outstation</option>
+            <option value="Local">Local</option>
+          </select>
+        </div>
+
+        <div>
+          <FieldLabel optional>Estimated Distance (km)</FieldLabel>
+          <input
+            type="number"
+            value={estimatedDistance}
+            placeholder="e.g. 45"
+            onChange={e => setEstimatedDistance(e.target.value)}
+            className={`${fieldCls(false)} num`}
+          />
+        </div>
+      </div>
+
+      {/* 6. Estimated Fare & Payment Status */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <FieldLabel required>Estimated Fare (₹)</FieldLabel>
           <div className="relative">
             <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-soft">
               <IndianRupee size={13} strokeWidth={2.5} />
@@ -509,35 +543,34 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
           </div>
           <FieldError msg={errors.fare} />
         </div>
+
+        <div>
+          <FieldLabel>Payment Status</FieldLabel>
+          <select
+            value={paymentStatus}
+            onChange={e => setPaymentStatus(e.target.value)}
+            className={fieldCls(false)}
+          >
+            {PAYMENT_STATUSES.map(p => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* 5. Payment Status */}
-      <div>
-        <FieldLabel>Payment Status</FieldLabel>
-        <select
-          value={paymentStatus}
-          onChange={e => setPaymentStatus(e.target.value)}
-          className={fieldCls(false)}
-        >
-          {PAYMENT_STATUSES.map(p => (
-            <option key={p} value={p}>{p}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* 6. Notes */}
+      {/* 7. Notes */}
       <div>
         <FieldLabel optional>Notes / Instructions</FieldLabel>
         <textarea
           rows={2}
           value={notes}
           onChange={e => setNotes(e.target.value)}
-          placeholder="Driver instructions, luggage details, special requests..."
+          placeholder="Passenger details, flight number, special requests..."
           className="w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-xs sm:text-sm text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 resize-none"
         />
       </div>
 
-      {/* Form Action Buttons */}
+      {/* Form Actions */}
       <div className="mt-5 flex items-center justify-end gap-3 pt-3 border-t border-line shrink-0">
         <button
           type="button"

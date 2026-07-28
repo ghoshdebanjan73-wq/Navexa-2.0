@@ -120,7 +120,7 @@ create policy "Allow all CRUD operations for authenticated users on vehicles"
 -- -----------------------------------------------------------------------------
 create table if not exists public.trips (
     id text primary key,
-    user_id uuid not null references auth.users(id) on delete cascade,
+    user_id uuid references auth.users(id) on delete cascade,
     customer text not null,
     customer_id text references public.customers(id) on delete set null,
     pickup_location text not null,
@@ -130,15 +130,31 @@ create table if not exists public.trips (
     vehicle text not null,
     vehicle_id text references public.vehicles(id) on delete set null,
     vehicle_reg text,
+    driver_id text references public.drivers(id) on delete set null,
+    driver_name text,
+    driver_phone text,
+    trip_type text default 'One Way',
+    estimated_distance numeric,
     fare numeric not null,
-    status text not null default 'Upcoming',
+    actual_fare numeric,
+    status text not null default 'Booked',
     payment_status text not null default 'Unpaid',
+    timeline jsonb default '[]'::jsonb,
     notes text,
     created_at timestamptz not null default now(),
     created_by text,
     updated_at timestamptz,
     updated_by text
 );
+
+-- Migration helpers for trips table
+alter table public.trips add column if not exists driver_id text;
+alter table public.trips add column if not exists driver_name text;
+alter table public.trips add column if not exists driver_phone text;
+alter table public.trips add column if not exists trip_type text default 'One Way';
+alter table public.trips add column if not exists estimated_distance numeric;
+alter table public.trips add column if not exists actual_fare numeric;
+alter table public.trips add column if not exists timeline jsonb default '[]'::jsonb;
 
 -- Enable RLS
 alter table public.trips enable row level security;

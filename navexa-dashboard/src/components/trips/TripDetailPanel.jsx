@@ -1,342 +1,320 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
-  X, Edit2, Play, CheckCircle2, XCircle, ArrowRight, MapPin,
-  Calendar, Clock, Car, CreditCard, FileText, User, Phone, Info, Route, Plus, Check
+  X, Route, User, Car, Calendar, Clock, MapPin, CheckCircle2,
+  AlertCircle, Edit3, Trash2, ArrowRight, Check, Play, Flag, IndianRupee
 } from 'lucide-react'
-import { STATUS_BADGE, PAYMENT_BADGE } from '../../pages/Trips'
-import { formatINR } from '../../data/tripStore'
-import { getCustomerById, getCustomerByName, getInitials, subscribeCustomers } from '../../data/customerStore'
-import { liveVehicles, getEffectiveVehicleStatus, subscribeVehicles } from '../../data/vehicleStore'
-import {
-  getTripPaymentSummary, getPaymentsByTrip, subscribePayments
-} from '../../data/paymentStore'
-import RecordPaymentModal from './RecordPaymentModal'
+import { getNextTripStatus, updateTripStatus, TRIP_STAGES, formatINR } from '../../data/tripStore'
+import { liveDrivers } from '../../data/driverStore'
+import { liveVehicles } from '../../data/vehicleStore'
+import ConfirmDialog from './ConfirmDialog'
 
-function DetailRow({ icon: Icon, label, value, valueClass = '' }) {
-  if (!value) return null
-  return (
-    <div className="flex items-start gap-3 py-2.5 border-b border-line/50 last:border-0">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-bg text-ink-soft mt-0.5">
-        <Icon size={14} strokeWidth={2} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[11px] text-ink-soft font-medium uppercase tracking-wide mb-0.5">{label}</p>
-        <p className={`text-sm font-semibold text-ink ${valueClass}`}>{value}</p>
-      </div>
-    </div>
-  )
-}
+export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelete, isAdmin }) {
+  const [confirmStatus, setConfirmStatus] = useState(null)
+  const [actualFareInput, setActualFareInput] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-export default function TripDetailPanel({ trip, onClose, onEdit, onStart, onComplete, onCancel, onShowToast, user }) {
-  const [customerRecord, setCustomerRecord] = useState(() => {
-    if (!trip) return null
-    return (trip.customerId && getCustomerById(trip.customerId)) || getCustomerByName(trip.customer)
-  })
+  if (!isOpen || !trip) return null
 
-  const [vehicleRecord, setVehicleRecord] = useState(() => {
-    if (!trip) return null
-    return liveVehicles.find(v => (trip.vehicleId && v.id === trip.vehicleId) || v.name === trip.vehicle)
-  })
+  const nextAction = getNextTripStatus(trip.status)
 
-  // Payment state derived from paymentStore
-  const [paySummary, setPaySummary] = useState(() => {
-    if (!trip) return { fare: 0, amountPaid: 0, balance: 0, paymentStatus: 'Unpaid' }
-    return getTripPaymentSummary(trip.id, trip.fare, trip.paymentStatus)
-  })
-  const [payHistory, setPayHistory] = useState(() => {
-    if (!trip) return []
-    return getPaymentsByTrip(trip.id)
-  })
-
-  const [recordPayOpen, setRecordPayOpen] = useState(false)
-
-  // Subscribe to customerStore, vehicleStore & paymentStore
-  useEffect(() => {
-    if (!trip) return
-    const unsubCust = subscribeCustomers(() => {
-      setCustomerRecord((trip.customerId && getCustomerById(trip.customerId)) || getCustomerByName(trip.customer))
-    })
-    const unsubVeh = subscribeVehicles(() => {
-      setVehicleRecord(liveVehicles.find(v => (trip.vehicleId && v.id === trip.vehicleId) || v.name === trip.vehicle))
-    })
-    const unsubPay = subscribePayments(() => {
-      setPaySummary(getTripPaymentSummary(trip.id, trip.fare, trip.paymentStatus))
-      setPayHistory(getPaymentsByTrip(trip.id))
-    })
-    return () => {
-      unsubCust()
-      unsubVeh()
-      unsubPay()
-    }
-  }, [trip])
-
-  // Escape key listener
-  useEffect(() => {
-    const handler = e => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
-
-  // ─── Invalid / Nonexistent Trip ID ──────────────────────────────────────────
-  if (!trip || !trip.id) {
-    return (
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fadeIn"
-        onClick={e => { if (e.target === e.currentTarget) onClose() }}
-      >
-        <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-pop text-center space-y-3 animate-scaleUp">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 mx-auto">
-            <Route size={24} />
-          </div>
-          <h3 className="text-base font-extrabold text-ink">Trip Not Found</h3>
-          <p className="text-xs text-ink-soft">The requested trip record could not be found or has been removed.</p>
-          <button
-            onClick={onClose}
-            className="mt-2 rounded-xl bg-primary px-5 py-2 text-xs font-bold text-white hover:opacity-90 cursor-pointer"
-          >
-            Back to Trips
-          </button>
-        </div>
-      </div>
-    )
+  // Driver details
+  let driverObj = null
+  if (trip.driverId) {
+    driverObj = liveDrivers.find(d => d.id === trip.driverId)
   }
 
-  const customerName  = customerRecord?.name || trip.customer || 'Customer unavailable'
-  const customerPhone = customerRecord?.phone || null
+  // Vehicle details
+  let vehicleObj = null
+  if (trip.vehicleId) {
+    vehicleObj = liveVehicles.find(v => v.id === trip.vehicleId)
+  }
 
-  const vehicleName   = vehicleRecord?.name || trip.vehicle || 'Vehicle unavailable'
-  const vehicleReg    = vehicleRecord?.reg || trip.vehicleReg || ''
-  const vehicleStatus = vehicleRecord ? getEffectiveVehicleStatus(vehicleRecord) : null
+  const handleStatusProgression = async () => {
+    if (!nextAction || isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      const actualFareVal = nextAction.next === 'Completed' ? (actualFareInput || trip.fare) : null
+      await updateTripStatus(trip.id, nextAction.next, actualFareVal)
+      setConfirmStatus(null)
+    } catch (err) {
+      console.error('Error progressing trip status:', err)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Trip Details"
-      className="fixed inset-0 z-50 flex items-center justify-center sm:items-start sm:justify-end bg-slate-900/40 backdrop-blur-sm p-0 sm:p-4 animate-fadeIn"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs animate-fadeIn"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full sm:w-[420px] md:w-[460px] h-full sm:h-auto sm:max-h-[92vh] rounded-none sm:rounded-2xl border-0 sm:border border-line bg-surface shadow-pop flex flex-col overflow-hidden animate-slideRight">
-
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-line px-5 pt-5 pb-4 shrink-0">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base font-extrabold text-ink truncate">
-                {trip.pickupLocation} → {trip.destination}
-              </h2>
+      <div className="w-full max-w-lg h-full bg-surface border-l border-line shadow-2xl flex flex-col justify-between animate-slideLeft overflow-y-auto">
+        
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur-md border-b border-line p-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary font-bold">
+              <Route size={20} />
             </div>
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold ${STATUS_BADGE[trip.status]}`}>
-                {trip.status}
-              </span>
-              <span className={`inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold ${PAYMENT_BADGE[paySummary.paymentStatus]}`}>
-                {paySummary.paymentStatus}
-              </span>
+            <div>
+              <h3 className="text-base font-extrabold text-ink leading-tight">{trip.customer}</h3>
+              <p className="text-xs text-ink-soft num font-extrabold">{trip.id}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="Close details"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-soft hover:bg-slate-100 cursor-pointer ml-2"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-soft hover:bg-slate-100 hover:text-ink transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        {/* Content Body */}
+        <div className="p-5 space-y-6 flex-1">
           
-          {/* Customer Section */}
-          <div className="rounded-xl border border-line bg-bg p-3.5 space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Customer</p>
-            <div className="flex items-center gap-2.5 pt-0.5">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-50 text-xs font-extrabold text-primary">
-                {getInitials(customerName)}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-ink truncate">{customerName}</p>
-                {customerPhone ? (
-                  <p className="text-xs text-ink-soft flex items-center gap-1 font-semibold num mt-0.5">
-                    <Phone size={11} className="text-slate-400" /> {customerPhone}
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-ink-soft italic">No phone recorded</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Vehicle Section */}
-          <div className="rounded-xl border border-line bg-bg p-3.5 space-y-1">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Assigned Vehicle</p>
-              {vehicleStatus && (
-                <span className="rounded-full bg-surface border border-line px-2 py-0.5 text-[10px] font-bold text-ink-soft">
-                  {vehicleStatus}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2.5 pt-0.5">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface border border-line text-primary">
-                <Car size={16} strokeWidth={2.25} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-ink truncate">{vehicleName}</p>
-                {vehicleReg && <p className="text-xs text-ink-soft font-semibold num mt-0.5">{vehicleReg}</p>}
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Summary Section */}
-          <div className="rounded-2xl border border-line bg-surface p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CreditCard size={16} className="text-emerald-600" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-ink">Payment Summary</h4>
-              </div>
-              {paySummary.balance === 0 ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 border border-emerald-200">
-                  <Check size={12} strokeWidth={2.5} /> Paid in Full
-                </span>
-              ) : (
+          {/* Quick Action Button for Status Progression */}
+          {nextAction && isAdmin && (
+            <div className="rounded-2xl border border-primary/20 bg-primary-50/50 p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-ink">Next Stage Workflow</p>
+                  <p className="text-[11px] text-ink-soft">Current: <strong className="text-primary">{trip.status}</strong></p>
+                </div>
                 <button
-                  onClick={() => setRecordPayOpen(true)}
-                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition-colors cursor-pointer shadow-2xs"
+                  onClick={() => setConfirmStatus(nextAction)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-md hover:bg-primary-600 transition-colors cursor-pointer"
                 >
-                  <Plus size={13} /> Record Payment
+                  <span>{nextAction.label}</span>
+                  <ArrowRight size={14} />
                 </button>
-              )}
+              </div>
+            </div>
+          )}
+
+          {/* Route & Timing Card */}
+          <div className="rounded-2xl border border-line bg-bg p-4 space-y-3">
+            <div className="flex items-center justify-between border-b border-line pb-2">
+              <span className="rounded-md bg-surface px-2 py-0.5 text-[11px] font-bold text-ink border border-line">
+                {trip.tripType || 'One Way'}
+              </span>
+              <span className="text-xs font-bold text-ink num">
+                {trip.tripDate} • {trip.tripTime}
+              </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 rounded-xl border border-line bg-bg p-3">
+            <div className="space-y-2 text-xs">
+              <div className="flex items-start gap-2.5">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-bold mt-0.5">
+                  A
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-ink-soft uppercase">Pickup Location</p>
+                  <p className="font-bold text-ink">{trip.pickupLocation}</p>
+                </div>
+              </div>
+
+              <div className="ml-3 border-l-2 border-dashed border-slate-300 h-3" />
+
+              <div className="flex items-start gap-2.5">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-700 font-bold mt-0.5">
+                  B
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-ink-soft uppercase">Drop Destination</p>
+                  <p className="font-bold text-ink">{trip.destination}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Fare & Financial Summary */}
+          <div className="rounded-2xl border border-line bg-surface p-4 space-y-3 shadow-2xs">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-ink-soft border-b border-line pb-2">
+              Fare & Financials
+            </h4>
+            <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Total Fare</p>
-                <p className="text-xs font-bold text-ink num mt-0.5">{formatINR(paySummary.fare)}</p>
+                <p className="text-[10px] font-bold text-ink-soft uppercase">Estimated Fare</p>
+                <p className="font-extrabold text-ink num text-sm mt-0.5">{formatINR(trip.fare)}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Amount Paid</p>
-                <p className="text-xs font-bold text-emerald-700 num mt-0.5">{formatINR(paySummary.amountPaid)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Balance Due</p>
-                <p className={`text-xs font-extrabold num mt-0.5 ${paySummary.balance > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
-                  {formatINR(paySummary.balance)}
+                <p className="text-[10px] font-bold text-ink-soft uppercase">Actual Fare</p>
+                <p className="font-extrabold text-emerald-700 num text-sm mt-0.5">
+                  {trip.actualFare ? formatINR(trip.actualFare) : 'Pending'}
                 </p>
               </div>
-            </div>
-
-            {/* Payment History List */}
-            <div className="pt-1 space-y-2">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
-                Payment History ({payHistory.length})
-              </p>
-              {payHistory.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-line bg-bg p-3 text-center text-xs font-semibold text-ink-soft">
-                  No payments recorded yet.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {payHistory.map(p => (
-                    <div key={p.id} className="rounded-xl border border-line bg-bg p-3 space-y-1 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-emerald-700 num text-sm">
-                          {formatINR(p.amount)}
-                        </span>
-                        <span className="rounded-md bg-surface border border-line px-2 py-0.5 text-[10px] font-bold text-ink-soft">
-                          {p.paymentMethod}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-ink-soft font-medium">Recorded on {p.paymentDate}</p>
-                      {p.notes && (
-                        <p className="text-xs text-ink bg-surface rounded-lg p-2 border border-line/50 mt-1">
-                          {p.notes}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+              {trip.estimatedDistance && (
+                <div>
+                  <p className="text-[10px] font-bold text-ink-soft uppercase">Distance</p>
+                  <p className="font-bold text-ink num mt-0.5">{trip.estimatedDistance} km</p>
                 </div>
               )}
+              <div>
+                <p className="text-[10px] font-bold text-ink-soft uppercase">Payment Status</p>
+                <p className="font-bold text-ink mt-0.5">{trip.paymentStatus || 'Unpaid'}</p>
+              </div>
             </div>
           </div>
 
-          {/* Route & Schedule Details */}
-          <div className="space-y-0.5 border-t border-line/60 pt-2">
-            <DetailRow icon={MapPin} label="Pickup Location" value={trip.pickupLocation} />
-            <DetailRow icon={ArrowRight} label="Destination" value={trip.destination} />
-            <DetailRow icon={Calendar} label="Trip Date" value={trip.tripDate} />
-            <DetailRow icon={Clock} label="Trip Time" value={trip.tripTime} />
+          {/* Vehicle & Driver Card */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Vehicle Card */}
+            <div className="rounded-2xl border border-line bg-surface p-3.5 space-y-2 shadow-2xs">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Assigned Vehicle</p>
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
+                  <Car size={16} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-ink">{trip.vehicle}</p>
+                  <p className="text-[10px] text-ink-soft uppercase num font-bold">{trip.vehicleReg || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Driver Card */}
+            <div className="rounded-2xl border border-line bg-surface p-3.5 space-y-2 shadow-2xs">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Assigned Driver</p>
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
+                  <User size={16} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-ink">{trip.driverName || 'Unassigned'}</p>
+                  <p className="text-[10px] text-ink-soft num font-medium">{trip.driverPhone || 'No contact'}</p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Notes Section */}
-          <div className="rounded-xl border border-line bg-surface p-3.5">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft mb-1">Notes / Special Instructions</p>
-            <p className="text-xs text-ink leading-relaxed">
-              {trip.notes?.trim() ? trip.notes : <span className="text-ink-soft italic">No notes added.</span>}
-            </p>
+          {/* Interactive Trip Timeline */}
+          <div className="rounded-2xl border border-line bg-surface p-4 space-y-4 shadow-2xs">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-ink-soft border-b border-line pb-2">
+              Trip Lifecycle Timeline
+            </h4>
+
+            <div className="relative pl-6 space-y-4 border-l-2 border-line">
+              {TRIP_STAGES.map((stageName) => {
+                const timelineEntry = (trip.timeline || []).find(t => t.status === stageName)
+                const isPassed = Boolean(timelineEntry) || TRIP_STAGES.indexOf(stageName) <= TRIP_STAGES.indexOf(trip.status)
+
+                return (
+                  <div key={stageName} className="relative">
+                    {/* Node Dot */}
+                    <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold ${
+                      isPassed ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      {isPassed ? <Check size={10} strokeWidth={3} /> : ''}
+                    </div>
+
+                    <div>
+                      <p className={`text-xs font-bold ${isPassed ? 'text-ink' : 'text-ink-soft opacity-60'}`}>
+                        {stageName}
+                      </p>
+                      {timelineEntry ? (
+                        <p className="text-[10px] text-ink-soft num font-medium">
+                          {new Date(timelineEntry.timestamp).toLocaleString()} • {timelineEntry.performedBy || 'Dispatcher'}
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-ink-soft italic opacity-60">Pending</p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
-          {/* Record Info */}
-          <div className="border-t border-line/60 pt-3 text-[11px] text-ink-soft space-y-0.5">
-            <p className="font-bold uppercase tracking-wider text-[10px] text-ink-soft mb-1">System Record Info</p>
-            <p><strong className="font-semibold text-ink">Trip ID:</strong> {trip.id}</p>
-            {trip.createdBy && <p><strong className="font-semibold text-ink">Created By:</strong> User {trip.createdBy}</p>}
-            {trip.createdAt && <p><strong className="font-semibold text-ink">Created At:</strong> {new Date(trip.createdAt).toLocaleDateString('en-IN')}</p>}
-            {trip.updatedAt && <p><strong className="font-semibold text-ink">Updated At:</strong> {new Date(trip.updatedAt).toLocaleDateString('en-IN')}</p>}
+          {/* Notes */}
+          {trip.notes && (
+            <div className="rounded-2xl border border-line bg-bg p-4 space-y-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Notes</p>
+              <p className="text-xs text-ink whitespace-pre-wrap leading-relaxed">{trip.notes}</p>
+            </div>
+          )}
+
+          {/* Timestamps */}
+          <div className="text-[10px] text-ink-soft space-y-1 pt-2 border-t border-line">
+            <p>Created Date: <span className="num font-semibold">{new Date(trip.createdAt || Date.now()).toLocaleString()}</span></p>
+            {trip.updatedAt && (
+              <p>Last Updated: <span className="num font-semibold">{new Date(trip.updatedAt).toLocaleString()}</span></p>
+            )}
           </div>
+
         </div>
 
         {/* Footer Actions */}
-        <div className="shrink-0 border-t border-line p-4 flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={onEdit}
-            className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-xs font-bold text-ink hover:bg-slate-50 cursor-pointer transition-colors"
-          >
-            <Edit2 size={13} /> Edit Trip
-          </button>
-
-          {trip.status === 'Upcoming' && (
+        {isAdmin && (
+          <div className="sticky bottom-0 bg-surface border-t border-line p-4 flex items-center gap-3">
             <button
-              onClick={onStart}
-              className="flex items-center gap-1.5 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 cursor-pointer transition-colors"
+              onClick={() => { onClose(); onEdit(trip) }}
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary-50 text-primary border border-primary/20 px-4 py-2.5 text-xs font-bold hover:bg-primary-100 transition-colors cursor-pointer"
             >
-              <Play size={13} /> Start Trip
+              <Edit3 size={15} /> Edit Trip
             </button>
-          )}
 
-          {trip.status === 'Ongoing' && (
             <button
-              onClick={onComplete}
-              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 cursor-pointer transition-colors"
+              onClick={() => { onClose(); onDelete(trip) }}
+              className="flex items-center justify-center gap-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 px-4 py-2.5 text-xs font-bold hover:bg-rose-100 transition-colors cursor-pointer"
             >
-              <CheckCircle2 size={13} /> Mark Completed
+              <Trash2 size={15} /> Delete
             </button>
-          )}
+          </div>
+        )}
 
-          {(trip.status === 'Upcoming' || trip.status === 'Ongoing') && (
-            <button
-              onClick={onCancel}
-              className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 cursor-pointer transition-colors ml-auto"
-            >
-              <XCircle size={13} /> Cancel Trip
-            </button>
-          )}
-        </div>
       </div>
 
-      {/* Record Payment Modal */}
-      {recordPayOpen && (
-        <RecordPaymentModal
-          trip={trip}
-          onClose={() => setRecordPayOpen(false)}
-          onSaved={(msg) => {
-            if (onShowToast) onShowToast(msg)
-          }}
-          user={user}
-        />
+      {/* Confirmation Modal for Status Progression */}
+      {confirmStatus && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-fadeIn"
+          onClick={e => { if (e.target === e.currentTarget) setConfirmStatus(null) }}
+        >
+          <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5 shadow-pop animate-scaleUp space-y-4">
+            <div className="flex items-center gap-3 border-b border-line pb-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-50 text-primary font-bold">
+                <ArrowRight size={18} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-ink">{confirmStatus.label}</h4>
+                <p className="text-xs text-ink-soft">Advance trip to stage <strong>{confirmStatus.next}</strong>?</p>
+              </div>
+            </div>
+
+            {confirmStatus.next === 'Completed' && (
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-ink">Actual Fare (₹)</label>
+                <input
+                  type="number"
+                  value={actualFareInput || trip.fare}
+                  onChange={e => setActualFareInput(e.target.value)}
+                  placeholder={String(trip.fare)}
+                  className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-xs font-bold text-ink num outline-none focus:border-primary"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmStatus(null)}
+                className="rounded-xl border border-line bg-surface px-3.5 py-1.5 text-xs font-bold text-ink hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleStatusProgression}
+                disabled={isSubmitting}
+                className="rounded-xl bg-primary px-4 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-primary-600 cursor-pointer"
+              >
+                {isSubmitting ? 'Updating...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
+
     </div>
   )
 }

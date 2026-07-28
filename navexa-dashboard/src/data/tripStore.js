@@ -1,26 +1,51 @@
 /**
  * tripStore.js
- * ONE centralized reactive store for ALL Navexa trip data with localStorage persistence.
+ * Centralized reactive store for Navexa trip data with localStorage persistence and Supabase synchronization.
  *
  * Storage Key: navexa_trips
- * Used by: Dashboard UpcomingTrips, Dashboard summary.trips,
- *          Trips page, Trip detail, Add Trip, Edit Trip.
- *
- * Independent data module — ZERO imports from customerStore to prevent circular dependencies.
  */
 
-import { upcomingTrips as seedTrips } from './mockData.js'
 import { addActivity } from './transactionStore.js'
+import { liveDrivers } from './driverStore.js'
+import { liveVehicles } from './vehicleStore.js'
 import { supabase } from '../lib/supabase'
 
 const STORAGE_KEY = 'navexa_trips'
 
-const SEED_CUSTOMER_IDS = {}
+/** Status progression stages in canonical sequence */
+export const TRIP_STAGES = [
+  'Booked',
+  'Confirmed',
+  'Driver Assigned',
+  'Vehicle Assigned',
+  'Started',
+  'Passenger Picked Up',
+  'Completed',
+]
 
-// Seed enriched trip records
-const seedEnriched = []
+export const PAYMENT_STATUSES = ['Unpaid', 'Paid', 'Partial']
 
-/** Safe load trips from localStorage with fallback */
+export function formatINR(val) {
+  if (val === null || val === undefined || isNaN(val)) return '₹0'
+  return `₹${Number(val).toLocaleString('en-IN')}`
+}
+
+export function getUpcomingForDashboard() {
+  return liveTrips
+    .filter(t => t.status !== 'Completed' && t.status !== 'Cancelled')
+    .slice(0, 5)
+}
+
+export function getTripCounts() {
+  const total = liveTrips.length
+  const upcoming = liveTrips.filter(t => t.status === 'Booked' || t.status === 'Confirmed' || t.status === 'Driver Assigned').length
+  const ongoing = liveTrips.filter(t => t.status === 'Started' || t.status === 'Passenger Picked Up' || t.status === 'Vehicle Assigned').length
+  const completed = liveTrips.filter(t => t.status === 'Completed').length
+
+  return { total, upcoming, ongoing, completed }
+}
+
+/** Safe load trips from localStorage */
 function loadTripsFromStorage() {
   if (typeof window === 'undefined') return []
   try {
@@ -50,6 +75,20 @@ function persistTrips() {
 /** @type {TripRecord[]} Central reactive array */
 export const liveTrips = loadTripsFromStorage()
 
+const listeners = new Set()
+
+export function subscribeTrips(fn) {
+  listeners.add(fn)
+  return () => listeners.delete(fn)
+}
+
+function notify() {
+  persistTrips()
+  const snap = [...liveTrips]
+  listeners.forEach(fn => fn(snap))
+}
+
+/** Cloud synchronization from Supabase */
 export async function syncTrips(userId) {
   try {
     const { data, error } = await supabase
@@ -71,9 +110,16 @@ export async function syncTrips(userId) {
         vehicle: item.vehicle,
         vehicleId: item.vehicle_id,
         vehicleReg: item.vehicle_reg || '',
+        driverId: item.driver_id || null,
+        driverName: item.driver_name || 'Unassigned',
+        driverPhone: item.driver_phone || '',
+        tripType: item.trip_type || 'One Way',
+        estimatedDistance: item.estimated_distance ? Number(item.estimated_distance) : null,
         fare: Number(item.fare) || 0,
-        paymentStatus: item.payment_status,
-        status: item.status,
+        actualFare: item.actual_fare ? Number(item.actual_fare) : null,
+        paymentStatus: item.payment_status || 'Unpaid',
+        status: item.status || 'Booked',
+        timeline: Array.isArray(item.timeline) ? item.timeline : [],
         notes: item.notes || '',
         createdBy: item.created_by,
         createdAt: item.created_at,
@@ -83,269 +129,407 @@ export async function syncTrips(userId) {
 
       liveTrips.length = 0
       liveTrips.push(...mapped)
-      persistTrips()
-
-      const snap = [...liveTrips]
-      listeners.forEach(fn => fn(snap))
-    } else {
-      // Empty database, keep local store empty
-      liveTrips.length = 0
-      persistTrips()
-
-      const snap = [...liveTrips]
-      listeners.forEach(fn => fn(snap))
+      notify()
     }
   } catch (err) {
     console.error('Error syncing trips:', err)
   }
 }
 
-// ─── Subscription ─────────────────────────────────────────────────────────────
-const listeners = new Set()
+/** Check driver and vehicle conflicts before creating or updating a trip */
+export function checkTripConflicts({ tripId = null, driverId, vehicleId, tripDate }) {
+  const activeStatuses = ['Started', 'Passenger Picked Up', 'Ongoing']
 
-export function subscribeTrips(fn) {
-  listeners.add(fn)
-  return () => listeners.delete(fn)
+  // 1. Check Driver availability
+  if (driverId) {
+    const driverObj = liveDrivers.find(d => d.id === driverId)
+    if (driverObj && driverObj.status === 'Inactive') {
+      return `Driver "${driverObj.fullName}" is marked Inactive.`
+    }
+
+    const driverActiveTrip = liveTrips.find(t => {
+      if (t.id === tripId) return false
+      if (t.driverId !== driverId) return false
+      return activeStatuses.includes(t.status)
+    })
+
+    if (driverActiveTrip) {
+      return `Driver is currently assigned to another active trip (${driverActiveTrip.id} - ${driverActiveTrip.customer}).`
+    }
+  }
+
+  // 2. Check Vehicle availability
+  if (vehicleId) {
+    const vehicleObj = liveVehicles.find(v => v.id === vehicleId)
+    if (vehicleObj && (vehicleObj.status === 'Inactive' || vehicleObj.status === 'Maintenance')) {
+      return `Vehicle "${vehicleObj.name}" is ${vehicleObj.status}.`
+    }
+
+    const vehicleActiveTrip = liveTrips.find(t => {
+      if (t.id === tripId) return false
+      if (t.vehicleId !== vehicleId) return false
+      return activeStatuses.includes(t.status)
+    })
+
+    if (vehicleActiveTrip) {
+      return `Vehicle "${vehicleObj?.name || 'Selected Vehicle'}" is currently on another active trip (${vehicleActiveTrip.id} - ${vehicleActiveTrip.customer}).`
+    }
+  }
+
+  return null
 }
 
-function notify() {
-  persistTrips()
-  const snap = [...liveTrips]
-  listeners.forEach(fn => fn(snap))
+/** Helper to determine next logical stage in status workflow */
+export function getNextTripStatus(currentStatus) {
+  switch (currentStatus) {
+    case 'Booked':
+      return { next: 'Confirmed', label: 'Confirm Trip' }
+    case 'Confirmed':
+      return { next: 'Driver Assigned', label: 'Assign Driver' }
+    case 'Driver Assigned':
+      return { next: 'Vehicle Assigned', label: 'Assign Vehicle' }
+    case 'Vehicle Assigned':
+      return { next: 'Started', label: 'Start Trip' }
+    case 'Started':
+      return { next: 'Passenger Picked Up', label: 'Passenger Picked Up' }
+    case 'Passenger Picked Up':
+      return { next: 'Completed', label: 'Complete Trip' }
+    default:
+      return null
+  }
+}
+
+/** Advanced Filter & Sort Trips */
+export function filterAndSortTrips(tripsList, { search = '', status = 'All', driverId = 'All', vehicleId = 'All', tripType = 'All', tripDate = '', sortBy = 'Newest' }) {
+  let result = [...tripsList]
+
+  // Status Filter
+  if (status !== 'All') {
+    if (status === 'Active') {
+      result = result.filter(t => ['Started', 'Passenger Picked Up', 'Ongoing', 'Vehicle Assigned'].includes(t.status))
+    } else {
+      result = result.filter(t => t.status === status)
+    }
+  }
+
+  // Driver Filter
+  if (driverId !== 'All') {
+    result = result.filter(t => t.driverId === driverId)
+  }
+
+  // Vehicle Filter
+  if (vehicleId !== 'All') {
+    result = result.filter(t => t.vehicleId === vehicleId)
+  }
+
+  // Trip Type Filter
+  if (tripType !== 'All') {
+    result = result.filter(t => t.tripType === tripType)
+  }
+
+  // Date Filter
+  if (tripDate) {
+    result = result.filter(t => t.tripDate === tripDate)
+  }
+
+  // Search by Customer, Driver, Vehicle, Trip ID, Pickup, Drop
+  if (search && search.trim()) {
+    const q = search.trim().toLowerCase()
+    result = result.filter(t => {
+      const haystack = `${t.id} ${t.customer} ${t.driverName || ''} ${t.vehicle} ${t.vehicleReg || ''} ${t.pickupLocation} ${t.destination}`.toLowerCase()
+      return haystack.includes(q)
+    })
+  }
+
+  // Sort
+  if (sortBy === 'Oldest') {
+    result.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
+  } else if (sortBy === 'Trip Date') {
+    result.sort((a, b) => new Date(b.tripDate || 0) - new Date(a.tripDate || 0))
+  } else if (sortBy === 'Customer Name') {
+    result.sort((a, b) => a.customer.localeCompare(b.customer))
+  } else {
+    // Newest
+    result.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+  }
+
+  return result
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
-/** Add a new trip */
-export function addTrip(record, userName = 'Banjo') {
+export async function addTrip(record, userId) {
+  // Conflict Check
+  const conflictErr = checkTripConflicts({
+    driverId: record.driverId,
+    vehicleId: record.vehicleId,
+    tripDate: record.tripDate,
+  })
+  if (conflictErr) {
+    throw new Error(conflictErr)
+  }
+
+  const id = `TRIP-${Date.now()}`
+  const now = new Date().toISOString()
+
+  // Initial timeline event
+  const initialTimeline = [
+    {
+      status: record.status || 'Booked',
+      label: 'Trip Created',
+      timestamp: now,
+      performedBy: 'Dispatcher',
+    }
+  ]
+
+  if (record.driverId) {
+    initialTimeline.push({
+      status: 'Driver Assigned',
+      label: `Driver Assigned — ${record.driverName || 'Driver'}`,
+      timestamp: now,
+      performedBy: 'Dispatcher',
+    })
+  }
+
+  if (record.vehicleId) {
+    initialTimeline.push({
+      status: 'Vehicle Assigned',
+      label: `Vehicle Assigned — ${record.vehicle || 'Vehicle'}`,
+      timestamp: now,
+      performedBy: 'Dispatcher',
+    })
+  }
+
+  // Determine initial status stage based on assignments
+  let initialStatus = record.status || 'Booked'
+  if (initialStatus === 'Booked' && record.driverId && record.vehicleId) {
+    initialStatus = 'Vehicle Assigned'
+  } else if (initialStatus === 'Booked' && record.driverId) {
+    initialStatus = 'Driver Assigned'
+  }
+
   const newTrip = {
-    id:             `TRP-${Date.now()}`,
-    customerId:     record.customerId || SEED_CUSTOMER_IDS[record.customer] || '',
-    customer:       record.customer || '',
-    pickupLocation: record.pickupLocation || '',
-    destination:    record.destination || '',
-    tripDate:       record.tripDate || '',
-    tripTime:       record.tripTime || '',
-    vehicle:        record.vehicle || '',
-    vehicleReg:     record.vehicleReg || '',
-    vehicleId:      record.vehicleId || '',
-    fare:           Number(record.fare) || 0,
-    paymentStatus:  record.paymentStatus || 'Unpaid',
-    status:         'Upcoming',
-    notes:          record.notes || '',
-    createdBy:      record.createdBy || 'U-01',
-    createdAt:      new Date().toISOString(),
-    updatedBy:      null,
-    updatedAt:      null,
-    _session:       true,
+    id,
+    customerId: record.customerId || null,
+    customer: record.customer.trim(),
+    pickupLocation: record.pickupLocation.trim(),
+    destination: record.destination.trim(),
+    tripDate: record.tripDate,
+    tripTime: record.tripTime,
+    vehicle: record.vehicle ? record.vehicle.trim() : 'Unassigned',
+    vehicleId: record.vehicleId || null,
+    vehicleReg: record.vehicleReg ? record.vehicleReg.trim().toUpperCase() : '',
+    driverId: record.driverId || null,
+    driverName: record.driverName ? record.driverName.trim() : 'Unassigned',
+    driverPhone: record.driverPhone ? record.driverPhone.trim() : '',
+    tripType: record.tripType || 'One Way',
+    estimatedDistance: record.estimatedDistance ? Number(record.estimatedDistance) : null,
+    fare: Number(record.fare) || 0,
+    actualFare: record.actualFare ? Number(record.actualFare) : null,
+    paymentStatus: record.paymentStatus || 'Unpaid',
+    status: initialStatus,
+    timeline: initialTimeline,
+    notes: record.notes ? record.notes.trim() : '',
+    createdBy: 'Dispatcher',
+    createdAt: now,
+    updatedAt: now,
   }
 
   liveTrips.unshift(newTrip)
 
   addActivity({
-    id:          Date.now(),
-    type:        'trip',
-    text:        `Trip added: ${record.pickupLocation} → ${record.destination} for ${record.customer}`,
-    performedBy: userName,
-    time:        'Just now',
+    id: Date.now(),
+    type: 'trip',
+    text: `Trip created — ${newTrip.customer} (${newTrip.pickupLocation} ➔ ${newTrip.destination})`,
+    performedBy: 'Dispatcher',
+    time: 'Just now',
   })
 
   notify()
 
-  // Save to Supabase in background
-  supabase.auth.getUser().then(({ data: { user } }) => {
-    if (user) {
-      supabase
-        .from('trips')
-        .insert({
-          id: newTrip.id,
-          user_id: user.id,
-          customer: newTrip.customer,
-          customer_id: newTrip.customerId || null,
-          pickup_location: newTrip.pickupLocation,
-          destination: newTrip.destination,
-          trip_date: newTrip.tripDate,
-          trip_time: newTrip.tripTime,
-          vehicle: newTrip.vehicle,
-          vehicle_id: newTrip.vehicleId || null,
-          vehicle_reg: newTrip.vehicleReg || null,
-          fare: newTrip.fare,
-          status: newTrip.status,
-          payment_status: newTrip.paymentStatus,
-          notes: newTrip.notes || null,
-          created_at: newTrip.createdAt,
-          created_by: newTrip.createdBy,
-        })
-        .then(({ error }) => {
-          if (error) console.error('Error inserting trip into Supabase:', error)
-        })
-    }
-  })
+  try {
+    const { error } = await supabase.from('trips').insert({
+      id: newTrip.id,
+      user_id: userId,
+      customer: newTrip.customer,
+      customer_id: newTrip.customerId,
+      pickup_location: newTrip.pickupLocation,
+      destination: newTrip.destination,
+      trip_date: newTrip.tripDate,
+      trip_time: newTrip.tripTime,
+      vehicle: newTrip.vehicle,
+      vehicle_id: newTrip.vehicleId,
+      vehicle_reg: newTrip.vehicleReg,
+      driver_id: newTrip.driverId,
+      driver_name: newTrip.driverName,
+      driver_phone: newTrip.driverPhone,
+      trip_type: newTrip.tripType,
+      estimated_distance: newTrip.estimatedDistance,
+      fare: newTrip.fare,
+      actual_fare: newTrip.actualFare,
+      status: newTrip.status,
+      payment_status: newTrip.paymentStatus,
+      timeline: newTrip.timeline,
+      notes: newTrip.notes,
+      created_at: newTrip.createdAt,
+    })
+
+    if (error) console.error('Error inserting trip into Supabase:', error)
+  } catch (err) {
+    console.error('Failed to save trip to cloud:', err)
+  }
 
   return newTrip
 }
 
-/** Edit an existing trip by id */
-export function editTrip(id, updates, userName = 'Banjo') {
+export async function updateTripStatus(id, newStatus, actualFare = null) {
   const idx = liveTrips.findIndex(t => t.id === id)
-  if (idx === -1) return null
+  if (idx === -1) throw new Error('Trip not found')
 
-  liveTrips[idx] = {
+  const now = new Date().toISOString()
+  const trip = liveTrips[idx]
+
+  const updatedTimeline = [
+    ...(trip.timeline || []),
+    {
+      status: newStatus,
+      label: `Trip ${newStatus}`,
+      timestamp: now,
+      performedBy: 'Dispatcher',
+    }
+  ]
+
+  const updated = {
+    ...trip,
+    status: newStatus,
+    actualFare: actualFare !== null ? Number(actualFare) : trip.actualFare,
+    timeline: updatedTimeline,
+    updatedAt: now,
+  }
+
+  liveTrips[idx] = updated
+
+  addActivity({
+    id: Date.now(),
+    type: 'trip',
+    text: `Trip ${id} status updated to ${newStatus}`,
+    performedBy: 'Dispatcher',
+    time: 'Just now',
+  })
+
+  notify()
+
+  try {
+    const { error } = await supabase
+      .from('trips')
+      .update({
+        status: newStatus,
+        actual_fare: updated.actualFare,
+        timeline: updatedTimeline,
+        updated_at: now,
+      })
+      .eq('id', id)
+
+    if (error) console.error('Error updating trip status in Supabase:', error)
+  } catch (err) {
+    console.error('Failed to update trip status in cloud:', err)
+  }
+
+  return updated
+}
+
+export async function editTrip(id, updates) {
+  const idx = liveTrips.findIndex(t => t.id === id)
+  if (idx === -1) throw new Error('Trip not found')
+
+  // Conflict Check
+  const conflictErr = checkTripConflicts({
+    tripId: id,
+    driverId: updates.driverId !== undefined ? updates.driverId : liveTrips[idx].driverId,
+    vehicleId: updates.vehicleId !== undefined ? updates.vehicleId : liveTrips[idx].vehicleId,
+    tripDate: updates.tripDate || liveTrips[idx].tripDate,
+  })
+  if (conflictErr) {
+    throw new Error(conflictErr)
+  }
+
+  const now = new Date().toISOString()
+  const updated = {
     ...liveTrips[idx],
     ...updates,
-    updatedBy:  'U-01',
-    updatedAt:  new Date().toISOString(),
+    updatedAt: now,
   }
 
+  liveTrips[idx] = updated
+
   addActivity({
-    id:          Date.now(),
-    type:        'trip',
-    text:        `Trip updated: ${liveTrips[idx].pickupLocation} → ${liveTrips[idx].destination}`,
-    performedBy: userName,
-    time:        'Just now',
+    id: Date.now(),
+    type: 'trip',
+    text: `Trip ${id} details updated`,
+    performedBy: 'Dispatcher',
+    time: 'Just now',
   })
 
   notify()
 
-  // Save to Supabase in background
-  supabase
-    .from('trips')
-    .update({
-      customer: liveTrips[idx].customer,
-      customer_id: liveTrips[idx].customerId || null,
-      pickup_location: liveTrips[idx].pickupLocation,
-      destination: liveTrips[idx].destination,
-      trip_date: liveTrips[idx].tripDate,
-      trip_time: liveTrips[idx].tripTime,
-      vehicle: liveTrips[idx].vehicle,
-      vehicle_id: liveTrips[idx].vehicleId || null,
-      vehicle_reg: liveTrips[idx].vehicleReg || null,
-      fare: liveTrips[idx].fare,
-      status: liveTrips[idx].status,
-      payment_status: liveTrips[idx].paymentStatus,
-      notes: liveTrips[idx].notes || null,
-      updated_at: liveTrips[idx].updatedAt,
-      updated_by: liveTrips[idx].updatedBy,
-    })
-    .eq('id', id)
-    .then(({ error }) => {
-      if (error) console.error('Error updating trip in Supabase:', error)
-    })
+  try {
+    const { error } = await supabase
+      .from('trips')
+      .update({
+        customer: updated.customer,
+        customer_id: updated.customerId,
+        pickup_location: updated.pickupLocation,
+        destination: updated.destination,
+        trip_date: updated.tripDate,
+        trip_time: updated.tripTime,
+        vehicle: updated.vehicle,
+        vehicle_id: updated.vehicleId,
+        vehicle_reg: updated.vehicleReg,
+        driver_id: updated.driverId,
+        driver_name: updated.driverName,
+        driver_phone: updated.driverPhone,
+        trip_type: updated.tripType,
+        estimated_distance: updated.estimatedDistance,
+        fare: updated.fare,
+        actual_fare: updated.actualFare,
+        status: updated.status,
+        payment_status: updated.paymentStatus,
+        notes: updated.notes,
+        updated_at: now,
+      })
+      .eq('id', id)
 
-  return liveTrips[idx]
+    if (error) console.error('Error updating trip in Supabase:', error)
+  } catch (err) {
+    console.error('Failed to update trip in cloud:', err)
+  }
+
+  return updated
 }
 
-/** Update only trip status */
-export function updateTripStatus(id, newStatus, userName = 'Banjo') {
+export async function deleteTrip(id) {
   const idx = liveTrips.findIndex(t => t.id === id)
-  if (idx === -1) return null
+  if (idx === -1) return false
 
-  liveTrips[idx] = {
-    ...liveTrips[idx],
-    status:    newStatus,
-    updatedBy: 'U-01',
-    updatedAt: new Date().toISOString(),
-  }
-
-  const actionVerb = {
-    Ongoing:   'started',
-    Completed: 'completed',
-    Cancelled: 'cancelled',
-    Upcoming:  'reset to Upcoming',
-  }[newStatus] || 'updated'
+  const removed = liveTrips[idx]
+  liveTrips.splice(idx, 1)
 
   addActivity({
-    id:          Date.now(),
-    type:        'trip',
-    text:        `Trip ${actionVerb}: ${liveTrips[idx].pickupLocation} → ${liveTrips[idx].destination}`,
-    performedBy: userName,
-    time:        'Just now',
+    id: Date.now(),
+    type: 'trip',
+    text: `Trip cancelled/removed — ${removed.id} (${removed.customer})`,
+    performedBy: 'Dispatcher',
+    time: 'Just now',
   })
 
   notify()
 
-  // Save to Supabase in background
-  supabase
-    .from('trips')
-    .update({
-      status: newStatus,
-      updated_at: liveTrips[idx].updatedAt,
-      updated_by: liveTrips[idx].updatedBy,
-    })
-    .eq('id', id)
-    .then(({ error }) => {
-      if (error) console.error('Error updating trip status in Supabase:', error)
-    })
-
-  return liveTrips[idx]
-}
-
-/** Update trip payment status */
-export function updatePaymentStatus(id, paymentStatus, userName = 'Banjo') {
-  return editTrip(id, { paymentStatus }, userName)
-}
-
-// ─── Computed helpers ─────────────────────────────────────────────────────────
-
-export function getTripCounts() {
-  const total     = liveTrips.length
-  const upcoming  = liveTrips.filter(t => t.status === 'Upcoming').length
-  const ongoing   = liveTrips.filter(t => t.status === 'Ongoing').length
-  const completed = liveTrips.filter(t => t.status === 'Completed').length
-  const cancelled = liveTrips.filter(t => t.status === 'Cancelled').length
-  return { total, upcoming, ongoing, completed, cancelled }
-}
-
-/** Dashboard-compatible snapshot: only Upcoming trips */
-export function getUpcomingForDashboard(limit = 5) {
-  return liveTrips
-    .filter(t => t.status === 'Upcoming')
-    .slice(0, limit)
-    .map(t => ({
-      id:       t.id,
-      customer: t.customer,
-      route:    `${t.pickupLocation} → ${t.destination}`,
-      dateTime: `${t.tripDate}, ${t.tripTime}`,
-      vehicle:  t.vehicle,
-      fare:     t.fare,
-      payment:  t.paymentStatus,
-      status:   t.status,
-    }))
-}
-
-// ─── Search & filter ──────────────────────────────────────────────────────────
-
-export function filterTrips({ search = '', status = 'All', vehicle = '', paymentStatus = '' }) {
-  const q = search.toLowerCase()
-  return liveTrips.filter(t => {
-    if (status !== 'All' && t.status !== status) return false
-    if (vehicle && t.vehicle !== vehicle) return false
-    if (paymentStatus && t.paymentStatus !== paymentStatus) return false
-    if (q) {
-      const haystack = [
-        t.customer, t.pickupLocation, t.destination, t.vehicle, t.vehicleReg
-      ].join(' ').toLowerCase()
-      if (!haystack.includes(q)) return false
-    }
-    return true
-  })
-}
-
-// ─── Format helpers ───────────────────────────────────────────────────────────
-
-export const formatINR = n =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n)
-
-export const TRIP_STATUSES = ['Upcoming', 'Ongoing', 'Completed', 'Cancelled']
-export const PAYMENT_STATUSES = ['Unpaid', 'Partial', 'Paid']
-
-/** Valid next statuses given current status */
-export function getNextStatuses(current) {
-  const map = {
-    Upcoming:  ['Ongoing', 'Cancelled'],
-    Ongoing:   ['Completed', 'Cancelled'],
-    Completed: [],
-    Cancelled: [],
+  try {
+    const { error } = await supabase.from('trips').delete().eq('id', id)
+    if (error) console.error('Error deleting trip from Supabase:', error)
+  } catch (err) {
+    console.error('Failed to delete trip from cloud:', err)
   }
-  return map[current] || []
+
+  return true
 }
