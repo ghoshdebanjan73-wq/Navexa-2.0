@@ -40,7 +40,7 @@ export default function CustomersOverview({ onViewAll }) {
         Recently Added
       </p>
       <div className="space-y-3">
-        {summary.recent.map((c, i) => (
+        {(summary?.recent || []).map((c, i) => (
           <div key={`${c.phone}-${i}`} className="flex items-center gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-50 text-[11px] font-bold text-primary">
               {getInitials(c.name)}

@@ -210,7 +210,12 @@ export function computeCustomerSummary() {
   const total = liveCustomers.length
   const active = liveCustomers.filter(c => c.status === 'Active').length
   const inactive = liveCustomers.filter(c => c.status === 'Inactive').length
-  return { total, active, inactive }
+  const recent = liveCustomers.slice(0, 3).map(c => ({
+    name: c.name,
+    phone: c.phone,
+    activity: c.companyName || (c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : 'Customer'),
+  }))
+  return { total, active, inactive, recent }
 }
 
 /** Advanced Filter & Sort Customers */
