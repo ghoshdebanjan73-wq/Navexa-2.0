@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { X, Loader2, Plus, IndianRupee, TrendingUp, TrendingDown, UserPlus } from 'lucide-react'
 import { useUser } from '../../context/UserContext'
-import { vehicles as allVehicles, upcomingTrips } from '../../data/mockData'
 import { addTransaction, addActivity, formatDate } from '../../data/transactionStore'
-import { addCustomer, findByPhone, getCustomerNames, subscribeCustomers } from '../../data/customerStore'
+import { addCustomer, findByPhone, subscribeCustomers } from '../../data/customerStore'
+import { liveTrips, subscribeTrips } from '../../data/tripStore'
+import { liveVehicles, subscribeVehicles } from '../../data/vehicleStore'
 import { addTrip } from '../../data/tripStore'
 import TripForm from '../trips/TripForm'
 
@@ -115,6 +116,12 @@ function IncomeForm({ onClose, onToast, user }) {
   const [notes,         setNotes]         = useState('')
   const [errors,        setErrors]        = useState({})
   const [isSubmitting,  setIsSubmitting]  = useState(false)
+  const [trips,         setTrips]         = useState([...liveTrips])
+
+  useEffect(() => {
+    const unsub = subscribeTrips(snap => setTrips([...snap]))
+    return unsub
+  }, [])
 
   const validate = () => {
     const e = {}
@@ -239,9 +246,9 @@ function IncomeForm({ onClose, onToast, user }) {
           className={fieldCls(false)}
         >
           <option value="">— No trip linked —</option>
-          {upcomingTrips.map(t => (
+          {trips.filter(t => t.status !== 'Completed' && t.status !== 'Cancelled').map(t => (
             <option key={t.id} value={t.id}>
-              {t.route} · {t.customer} · ₹{t.fare.toLocaleString('en-IN')}
+              {t.customer} · {t.pickupLocation} → {t.destination} · ₹{Number(t.fare).toLocaleString('en-IN')}
             </option>
           ))}
         </select>
@@ -282,6 +289,14 @@ function ExpenseForm({ onClose, onToast, user }) {
   const [notes,         setNotes]         = useState('')
   const [errors,        setErrors]        = useState({})
   const [isSubmitting,  setIsSubmitting]  = useState(false)
+  const [vehicles,      setVehicles]      = useState([...liveVehicles])
+  const [trips,         setTrips]         = useState([...liveTrips])
+
+  useEffect(() => {
+    const unsubV = subscribeVehicles(snap => setVehicles([...snap]))
+    const unsubT = subscribeTrips(snap => setTrips([...snap]))
+    return () => { unsubV(); unsubT() }
+  }, [])
 
   const vehicleCategories = ['Fuel', 'Maintenance', 'Repair', 'Cleaning']
   const tripCategories    = ['Toll & Parking']
@@ -410,9 +425,9 @@ function ExpenseForm({ onClose, onToast, user }) {
           className={fieldCls(false)}
         >
           <option value="">— No vehicle selected —</option>
-          {allVehicles.map(v => (
+          {vehicles.map(v => (
             <option key={v.id} value={v.id} disabled={v.status === 'Inactive'}>
-              {v.name} · {v.reg}{v.status === 'Inactive' ? ' (Inactive)' : ''}
+              {v.name} · {v.registrationNumber || v.reg}{v.status === 'Inactive' ? ' (Inactive)' : ''}
             </option>
           ))}
         </select>
@@ -434,9 +449,9 @@ function ExpenseForm({ onClose, onToast, user }) {
           className={fieldCls(false)}
         >
           <option value="">— No trip linked —</option>
-          {upcomingTrips.map(t => (
+          {trips.filter(t => t.status !== 'Completed').map(t => (
             <option key={t.id} value={t.id}>
-              {t.route} · {t.customer}
+              {t.customer} · {t.pickupLocation} → {t.destination}
             </option>
           ))}
         </select>

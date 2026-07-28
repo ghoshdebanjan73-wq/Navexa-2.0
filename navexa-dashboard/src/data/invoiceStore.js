@@ -410,13 +410,16 @@ export async function recordInvoicePayment(invoiceId, { amountPaid: newPaymentVa
   // Log transaction for Finance Store
   if (paymentAmount > 0) {
     addTransaction({
-      id: Date.now(),
-      type: 'income',
+      id: `PAY-${invoiceId}-${Date.now()}`,
+      type: 'Income',
       category: 'Invoice Payment',
       amount: paymentAmount,
+      invoiceId: inv.id,
+      customerId: inv.customerId || '',
       date: paymentDate || new Date().toISOString().split('T')[0],
-      reference: inv.invoiceNumber,
+      reference: referenceNumber || inv.invoiceNumber,
       description: `Payment received for Invoice ${inv.invoiceNumber} (${inv.customerName})`,
+      paymentMethod: paymentMethod || 'Cash',
     })
   }
 

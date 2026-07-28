@@ -9,48 +9,8 @@ import { supabase } from '../lib/supabase'
 
 const STORAGE_KEY = 'navexa_audit_logs'
 
-const INITIAL_AUDIT_LOGS = [
-  {
-    id: 'AUD-001001',
-    user_name: 'Debanjan Ghosh',
-    user_role: 'Admin',
-    action: 'CREATE',
-    entity_type: 'Trip',
-    entity_id: 'TRIP-12345',
-    entity_label: 'Trip #TRIP-12345 (Airport Drop)',
-    description: 'Admin created Trip #TRIP-12345 for Kunal Mane.',
-    new_values: { status: 'Booked', customer: 'Kunal Mane', amount: 3500 },
-    created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-  },
-  {
-    id: 'AUD-001002',
-    user_name: 'Debanjan Ghosh',
-    user_role: 'Admin',
-    action: 'STATUS_CHANGE',
-    entity_type: 'Trip',
-    entity_id: 'TRIP-12345',
-    entity_label: 'Trip #TRIP-12345',
-    description: 'Admin updated trip status from Booked to Confirmed.',
-    old_values: { status: 'Booked' },
-    new_values: { status: 'Confirmed' },
-    created_at: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
-  },
-  {
-    id: 'AUD-001003',
-    user_name: 'Debanjan Ghosh',
-    user_role: 'Admin',
-    action: 'PAYMENT',
-    entity_type: 'Invoice',
-    entity_id: 'NVX-000001',
-    entity_label: 'Invoice #NVX-000001',
-    description: 'Admin recorded partial payment of ₹2,000 via UPI.',
-    new_values: { amountPaid: 2000, paymentStatus: 'Partially Paid' },
-    created_at: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-  },
-]
-
 function loadLogsFromStorage() {
-  if (typeof window === 'undefined') return INITIAL_AUDIT_LOGS
+  if (typeof window === 'undefined') return []
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
@@ -60,7 +20,7 @@ function loadLogsFromStorage() {
   } catch (err) {
     console.error('Error loading audit logs from storage:', err)
   }
-  return INITIAL_AUDIT_LOGS
+  return []
 }
 
 function persistLogs() {

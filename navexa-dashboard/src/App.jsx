@@ -20,7 +20,9 @@ import NotificationsPage from './pages/Notifications'
 import SearchResultsPage from './pages/SearchResults'
 import SettingsPage from './pages/Settings'
 import ActivityLogPage from './pages/ActivityLog'
-import { Shield, User, Settings as SettingsIcon, Loader2 } from 'lucide-react'
+import ErrorBoundary from './components/ui/ErrorBoundary'
+import NotFoundPage from './components/ui/NotFoundPage'
+import { Shield, User, Loader2 } from 'lucide-react'
 
 function AppContent() {
   const { activeRoute, navigate } = useRouter()
@@ -101,8 +103,9 @@ function AppContent() {
       case 'CompanyProfile':
         return <CompanyProfilePage />
       case 'Dashboard':
-      default:
         return <Dashboard onNavigate={navigate} />
+      default:
+        return <NotFoundPage />
     }
   }
 
@@ -127,10 +130,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <UserProvider>
-      <RouterProvider>
-        <AppContent />
-      </RouterProvider>
-    </UserProvider>
+    <ErrorBoundary>
+      <UserProvider>
+        <RouterProvider>
+          <AppContent />
+        </RouterProvider>
+      </UserProvider>
+    </ErrorBoundary>
   )
 }

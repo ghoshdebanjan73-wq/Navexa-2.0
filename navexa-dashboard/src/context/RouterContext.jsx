@@ -81,6 +81,8 @@ export function getRouteFromLocation() {
   if (pathname.endsWith('/reports')) return 'Reports'
   if (pathname.endsWith('/notifications')) return 'Notifications'
   if (pathname.endsWith('/search')) return 'Search'
+  if (pathname.endsWith('/activity')) return 'Activity'
+  if (pathname.endsWith('/invoices')) return 'Invoices'
   if (pathname.endsWith('/customers')) return 'Customers'
   if (pathname.endsWith('/vehicles')) return 'Vehicles'
   if (pathname.endsWith('/users')) return 'Users'
