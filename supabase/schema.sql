@@ -300,5 +300,43 @@ create policy "Allow write access for admins on company_profile"
         )
     );
 
--- Enable Realtime replication for all core application tables including company_profile
-alter publication supabase_realtime set table customers, vehicles, trips, maintenance, payments, transactions, company_profile;
+-- -----------------------------------------------------------------------------
+-- 9. DRIVERS TABLE
+-- -----------------------------------------------------------------------------
+create table if not exists public.drivers (
+    id text primary key,
+    user_id uuid references auth.users(id) on delete cascade,
+    photo_url text,
+    full_name text not null,
+    phone text not null,
+    email text,
+    date_of_birth text,
+    address text,
+    emergency_contact_name text,
+    emergency_contact_phone text,
+    license_number text not null,
+    license_issue_date text,
+    license_expiry_date text not null,
+    assigned_vehicle_id text references public.vehicles(id) on delete set null,
+    assigned_vehicle_name text,
+    status text not null default 'Active',
+    notes text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz
+);
+
+-- Enable RLS
+alter table public.drivers enable row level security;
+
+-- Drop policy if exists to allow running script multiple times without error
+drop policy if exists "Allow all CRUD operations for authenticated users on drivers" on public.drivers;
+
+-- Policies for drivers
+create policy "Allow all CRUD operations for authenticated users on drivers"
+    on public.drivers for all
+    to authenticated
+    using (true)
+    with check (true);
+
+-- Enable Realtime replication for all core application tables including drivers
+alter publication supabase_realtime set table customers, vehicles, trips, maintenance, payments, transactions, company_profile, drivers;

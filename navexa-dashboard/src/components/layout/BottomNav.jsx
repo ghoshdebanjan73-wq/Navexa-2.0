@@ -11,7 +11,8 @@ import {
   Settings,
   X,
   LogOut,
-  Building2
+  Building2,
+  UserCheck
 } from 'lucide-react'
 import { useRouter } from '../../context/RouterContext'
 import { useUser } from '../../context/UserContext'
@@ -49,7 +50,7 @@ export default function BottomNav() {
   }
 
   // Check if More is active (when current route is a secondary route or drawer is open)
-  const isMoreActive = moreOpen || ['Vehicles', 'Users', 'Profile', 'Settings'].includes(activeRoute)
+  const isMoreActive = moreOpen || ['Vehicles', 'Drivers', 'Users', 'Profile', 'Settings', 'CompanyProfile'].includes(activeRoute)
 
   return (
     <>
@@ -160,21 +161,33 @@ export default function BottomNav() {
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2.5">
-              {/* Vehicles (Hide in More for Staff because it is in main BottomNav bar) */}
-              {!isStaff && (
-                <button
-                  type="button"
-                  onClick={() => handleNav('Vehicles')}
-                  className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors cursor-pointer ${
-                    activeRoute === 'Vehicles' ? 'border-primary bg-primary-50' : 'border-line bg-bg hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
-                    <Car size={18} />
-                  </div>
-                  <span className="text-xs font-bold text-ink">Vehicles</span>
-                </button>
-              )}
+              {/* Vehicles */}
+              <button
+                type="button"
+                onClick={() => handleNav('Vehicles')}
+                className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors cursor-pointer ${
+                  activeRoute === 'Vehicles' ? 'border-primary bg-primary-50' : 'border-line bg-bg hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
+                  <Car size={18} />
+                </div>
+                <span className="text-xs font-bold text-ink">Vehicles</span>
+              </button>
+
+              {/* Drivers (Available for all) */}
+              <button
+                type="button"
+                onClick={() => handleNav('Drivers')}
+                className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors cursor-pointer ${
+                  activeRoute === 'Drivers' ? 'border-primary bg-primary-50' : 'border-line bg-bg hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
+                  <UserCheck size={18} />
+                </div>
+                <span className="text-xs font-bold text-ink">Drivers</span>
+              </button>
 
               {/* Users (Hide for Staff) */}
               {!isStaff && (

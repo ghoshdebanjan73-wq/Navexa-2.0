@@ -4,6 +4,7 @@ import { syncTrips } from './tripStore'
 import { syncMaintenance } from './maintenanceStore'
 import { syncPayments } from './paymentStore'
 import { syncTransactions } from './transactionStore'
+import { syncDrivers } from './driverStore'
 import { supabase } from '../lib/supabase'
 
 export async function syncAllStores(userId) {
@@ -19,11 +20,12 @@ export async function syncAllStores(userId) {
     // 2. Sync secondary collections (Trips) which reference customers & vehicles
     await syncTrips(userId)
 
-    // 3. Sync dependent collections (Payments, Maintenance, Transactions)
+    // 3. Sync dependent collections (Payments, Maintenance, Transactions, Drivers)
     await Promise.all([
       syncMaintenance(userId),
       syncPayments(userId),
-      syncTransactions(userId)
+      syncTransactions(userId),
+      syncDrivers(userId)
     ])
 
     console.log('Supabase cloud synchronization completed successfully.')

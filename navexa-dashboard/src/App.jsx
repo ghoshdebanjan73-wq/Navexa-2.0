@@ -13,6 +13,7 @@ import SignInPage from './pages/SignIn'
 import SignUpPage from './pages/SignUp'
 import PlaceholderPage from './components/ui/PlaceholderPage'
 import CompanyProfilePage from './pages/CompanyProfile'
+import DriversPage from './pages/Drivers'
 import { Shield, User, Settings, Loader2 } from 'lucide-react'
 
 function AppContent() {
@@ -73,6 +74,8 @@ function AppContent() {
         return <FinancePage />
       case 'Vehicles':
         return <VehiclesPage />
+      case 'Drivers':
+        return <DriversPage />
       case 'Users':
         return <PlaceholderPage title="Users" icon={Shield} desc="Manage dispatcher accounts, driver profiles, and system access." />
       case 'Profile':
