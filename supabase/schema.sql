@@ -245,8 +245,63 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- Enable Realtime replication for all core application tables
+-- -----------------------------------------------------------------------------
+-- 8. COMPANY PROFILE TABLE
+-- -----------------------------------------------------------------------------
+create table if not exists public.company_profile (
+    id uuid primary key default gen_random_uuid(),
+    business_name text not null,
+    owner_name text not null,
+    phone text not null,
+    email text,
+    gst_number text,
+    address text not null,
+    city text,
+    state text,
+    country text,
+    postal_code text,
+    logo_url text,
+    currency text not null default 'INR',
+    timezone text not null default 'Asia/Kolkata',
+    date_format text not null default '12h',
+    invoice_prefix text not null default 'NVX',
+    starting_invoice_number text not null default '000001',
+    created_at timestamptz not null default now(),
+    updated_at timestamptz,
+    created_by uuid references auth.users(id) on delete cascade
+);
+
+-- Enable RLS
+alter table public.company_profile enable row level security;
+
+-- Drop policies if exist to allow running script multiple times without error
+drop policy if exists "Allow read access for authenticated users on company_profile" on public.company_profile;
+drop policy if exists "Allow write access for admins on company_profile" on public.company_profile;
+
+-- Policies for company_profile
+create policy "Allow read access for authenticated users on company_profile"
+    on public.company_profile for select
+    to authenticated
+    using (true);
+
+create policy "Allow write access for admins on company_profile"
+    on public.company_profile for all
+    to authenticated
+    using (
+        exists (
+            select 1 from public.users
+            where users.id = auth.uid() and users.role = 'Admin'
+        )
+    )
+    with check (
+        exists (
+            select 1 from public.users
+            where users.id = auth.uid() and users.role = 'Admin'
+        )
+    );
+
+-- Enable Realtime replication for all core application tables including company_profile
 begin;
-  alter publication supabase_realtime drop table if exists customers, vehicles, trips, maintenance, payments, transactions;
-  alter publication supabase_realtime add table customers, vehicles, trips, maintenance, payments, transactions;
+  alter publication supabase_realtime drop table if exists customers, vehicles, trips, maintenance, payments, transactions, company_profile;
+  alter publication supabase_realtime add table customers, vehicles, trips, maintenance, payments, transactions, company_profile;
 commit;

@@ -10,7 +10,8 @@ import {
   User,
   Settings,
   X,
-  LogOut
+  LogOut,
+  Building2
 } from 'lucide-react'
 import { useRouter } from '../../context/RouterContext'
 import { useUser } from '../../context/UserContext'
@@ -188,6 +189,22 @@ export default function BottomNav() {
                     <Shield size={18} />
                   </div>
                   <span className="text-xs font-bold text-ink">Users</span>
+                </button>
+              )}
+
+              {/* Company Profile (Hide for Staff) */}
+              {!isStaff && (
+                <button
+                  type="button"
+                  onClick={() => handleNav('CompanyProfile')}
+                  className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors cursor-pointer ${
+                    activeRoute === 'CompanyProfile' ? 'border-primary bg-primary-50' : 'border-line bg-bg hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
+                    <Building2 size={18} />
+                  </div>
+                  <span className="text-xs font-bold text-ink">Company Profile</span>
                 </button>
               )}
 

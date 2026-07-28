@@ -11,6 +11,7 @@ const ROUTE_PATHS = {
   Users:     '/users',
   Profile:   '/profile',
   Settings:  '/settings',
+  CompanyProfile: '/company-profile',
 }
 
 const PATH_TO_ROUTE = {
@@ -25,6 +26,7 @@ const PATH_TO_ROUTE = {
   '/users':     'Users',
   '/profile':   'Profile',
   '/settings':  'Settings',
+  '/company-profile': 'CompanyProfile',
 }
 
 /** Get route ID from window.location.pathname or hash */
@@ -45,6 +47,7 @@ export function getRouteFromLocation() {
     if (hash === 'users') return 'Users'
     if (hash === 'profile') return 'Profile'
     if (hash === 'settings') return 'Settings'
+    if (hash === 'companyprofile' || hash === 'company-profile') return 'CompanyProfile'
     if (hash === 'dashboard' || hash === '') return 'Dashboard'
   }
 
@@ -63,6 +66,7 @@ export function getRouteFromLocation() {
   if (pathname.endsWith('/users')) return 'Users'
   if (pathname.endsWith('/profile')) return 'Profile'
   if (pathname.endsWith('/settings')) return 'Settings'
+  if (pathname.endsWith('/company-profile')) return 'CompanyProfile'
 
   return 'Dashboard'
 }
@@ -97,6 +101,7 @@ export function RouterProvider({ children }) {
     const getTitleForRoute = (rId) => {
       if (rId === 'SignIn') return 'Navexa — Sign In'
       if (rId === 'SignUp') return 'Navexa — Sign Up'
+      if (rId === 'CompanyProfile') return 'Navexa — Company Profile'
       if (rId === 'Dashboard') return 'Navexa — Dashboard'
       return `Navexa — ${rId}`
     }
@@ -119,6 +124,7 @@ export function RouterProvider({ children }) {
       const getTitleForRoute = (rId) => {
         if (rId === 'SignIn') return 'Navexa — Sign In'
         if (rId === 'SignUp') return 'Navexa — Sign Up'
+        if (rId === 'CompanyProfile') return 'Navexa — Company Profile'
         if (rId === 'Dashboard') return 'Navexa — Dashboard'
         return `Navexa — ${rId}`
       }
