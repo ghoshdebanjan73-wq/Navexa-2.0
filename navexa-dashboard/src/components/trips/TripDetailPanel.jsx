@@ -6,6 +6,7 @@ import {
 import { getNextTripStatus, updateTripStatus, TRIP_STAGES, formatINR } from '../../data/tripStore'
 import { liveDrivers } from '../../data/driverStore'
 import { liveVehicles } from '../../data/vehicleStore'
+import { getTripProfitability } from '../../data/transactionStore'
 import ConfirmDialog from './ConfirmDialog'
 
 export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelete, isAdmin }) {
@@ -224,6 +225,35 @@ export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelet
               })}
             </div>
           </div>
+
+          {/* Trip Profitability Analysis */}
+          {(() => {
+            const prof = getTripProfitability(trip.id, trip.actualFare || trip.fare)
+            return (
+              <div className="rounded-2xl border border-line bg-surface p-4 space-y-2.5 shadow-2xs">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary border-b border-line pb-2">
+                  Trip Financial & Profitability
+                </h4>
+
+                <div className="grid grid-cols-3 gap-2 text-xs text-center">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-2.5">
+                    <p className="text-[10px] font-bold text-emerald-800 uppercase">Revenue</p>
+                    <p className="text-xs font-extrabold text-emerald-900 num mt-0.5">{formatINR(prof.revenue)}</p>
+                  </div>
+
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-2.5">
+                    <p className="text-[10px] font-bold text-rose-800 uppercase">Expenses</p>
+                    <p className="text-xs font-extrabold text-rose-900 num mt-0.5">{formatINR(prof.expenses)}</p>
+                  </div>
+
+                  <div className={`rounded-xl border p-2.5 ${prof.profit >= 0 ? 'border-primary/40 bg-primary-50/50' : 'border-rose-300 bg-rose-100/50'}`}>
+                    <p className="text-[10px] font-bold text-primary uppercase">Net Profit</p>
+                    <p className={`text-xs font-extrabold num mt-0.5 ${prof.profit >= 0 ? 'text-primary' : 'text-rose-700'}`}>{formatINR(prof.profit)}</p>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Notes */}
           {trip.notes && (

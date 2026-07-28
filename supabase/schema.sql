@@ -467,5 +467,42 @@ create policy "Allow all CRUD operations for authenticated users on invoices"
     using (true)
     with check (true);
 
--- Enable Realtime replication for all core application tables including invoices
-alter publication supabase_realtime set table customers, vehicles, trips, maintenance, payments, transactions, company_profile, drivers, invoices;
+-- -----------------------------------------------------------------------------
+-- 11. FINANCE TRANSACTIONS TABLE
+-- -----------------------------------------------------------------------------
+create table if not exists public.finance_transactions (
+    id text primary key,
+    type text not null check (type in ('Income', 'Expense')),
+    category text not null,
+    amount numeric not null check (amount >= 0),
+    description text not null,
+    payment_method text not null default 'Cash',
+    transaction_date date not null default current_date,
+    customer_id text references public.customers(id) on delete set null,
+    trip_id text references public.trips(id) on delete set null,
+    invoice_id text references public.invoices(id) on delete set null,
+    vehicle_id text references public.vehicles(id) on delete set null,
+    vendor text,
+    reference_number text,
+    receipt_path text,
+    notes text,
+    created_by text,
+    created_at timestamptz not null default now(),
+    user_id uuid references auth.users(id) on delete cascade
+);
+
+-- Enable RLS
+alter table public.finance_transactions enable row level security;
+
+-- Drop policy if exists to allow running script multiple times without error
+drop policy if exists "Allow all CRUD operations for authenticated users on finance_transactions" on public.finance_transactions;
+
+-- Policies for finance_transactions
+create policy "Allow all CRUD operations for authenticated users on finance_transactions"
+    on public.finance_transactions for all
+    to authenticated
+    using (true)
+    with check (true);
+
+-- Enable Realtime replication for all core application tables including finance_transactions
+alter publication supabase_realtime set table customers, vehicles, trips, maintenance, payments, transactions, company_profile, drivers, invoices, finance_transactions;
