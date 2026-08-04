@@ -1,17 +1,28 @@
 import { useState, useRef } from 'react'
 import {
   X, Printer, Download, CreditCard, CheckCircle2, AlertCircle,
-  Building2, Phone, Mail, FileText, MapPin, Route, Car, User, ArrowRight
+  Building2, Phone, Mail, FileText, MapPin, Route, Car, User, ArrowRight,
+  Plus, Trash2, Calendar, ShieldCheck, DollarSign
 } from 'lucide-react'
 import { formatINR } from '../../data/tripStore'
+import {
+  getInvoicePaymentSummary,
+  getPaymentsByInvoice,
+  deleteInvoicePaymentRecord
+} from '../../data/paymentStore'
+import StatusBadge from '../ui/StatusBadge'
 
-export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordPayment, isAdmin }) {
+export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordPayment, isAdmin, currentUser }) {
   const printRef = useRef(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
 
   if (!isOpen || !invoice) return null
 
   const company = invoice.companyDetails || {}
   const trip = invoice.tripDetails || {}
+
+  const paymentSummary = getInvoicePaymentSummary(invoice.id, invoice.totalAmount, invoice.paymentStatus)
+  const paymentsList = getPaymentsByInvoice(invoice.id)
 
   const handlePrint = () => {
     window.print()
@@ -19,6 +30,11 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
 
   const handleDownload = () => {
     window.print()
+  }
+
+  const handleDeletePayment = (paymentId) => {
+    deleteInvoicePaymentRecord(paymentId, currentUser)
+    setDeleteConfirmId(null)
   }
 
   return (
@@ -51,22 +67,12 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
         }
       `}</style>
 
-      <div className="my-6 w-full max-w-2xl rounded-2xl border border-line bg-surface p-6 shadow-pop animate-scaleUp space-y-6 max-h-[92vh] overflow-y-auto">
+      <div className="my-6 w-full max-w-3xl rounded-2xl border border-line bg-surface p-6 shadow-pop animate-scaleUp space-y-6 max-h-[92vh] overflow-y-auto">
         
         {/* Top Control Bar (Hidden during print) */}
-        <div className="no-print flex items-center justify-between border-b border-line pb-4">
-          <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${
-              invoice.paymentStatus === 'Paid'
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : invoice.paymentStatus === 'Partially Paid'
-                ? 'bg-amber-50 text-amber-700 border-amber-200'
-                : invoice.paymentStatus === 'Overdue'
-                ? 'bg-rose-50 text-rose-700 border-rose-200'
-                : 'bg-sky-50 text-sky-700 border-sky-200'
-            }`}>
-              {invoice.paymentStatus}
-            </span>
+        <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-line pb-4">
+          <div className="flex items-center gap-2.5">
+            <StatusBadge status={paymentSummary.paymentStatus} />
             <span className="text-xs font-bold text-ink num">{invoice.invoiceNumber}</span>
           </div>
 
@@ -85,9 +91,9 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
               <Download size={15} /> Download PDF
             </button>
 
-            {isAdmin && invoice.paymentStatus !== 'Paid' && (
+            {isAdmin && paymentSummary.paymentStatus !== 'Paid' && (
               <button
-                onClick={() => { onClose(); onRecordPayment(invoice) }}
+                onClick={() => { onRecordPayment(invoice) }}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-primary-600 transition-colors cursor-pointer"
               >
                 <CreditCard size={15} /> Record Payment
@@ -100,6 +106,157 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
             >
               <X size={18} />
             </button>
+          </div>
+        </div>
+
+        {/* ─── DEDICATED PAYMENT DETAILS SECTION (SCREEN VIEW) ─────────────────── */}
+        <div className="no-print space-y-4 rounded-2xl border border-line bg-bg/50 p-4 sm:p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
+              Payment Details & Progress
+            </h3>
+            {isAdmin && paymentSummary.remainingBalance > 0 && (
+              <button
+                onClick={() => onRecordPayment(invoice)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-2xs hover:bg-emerald-700 transition-colors cursor-pointer"
+              >
+                <Plus size={14} /> Add Payment
+              </button>
+            )}
+          </div>
+
+          {/* Payment Progress Metrics Bar */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-line bg-surface p-3 space-y-1">
+              <p className="text-[10px] font-bold uppercase text-ink-soft">Invoice Total</p>
+              <p className="text-sm font-extrabold text-ink num">{formatINR(paymentSummary.totalAmount)}</p>
+            </div>
+            <div className="rounded-xl border border-line bg-surface p-3 space-y-1">
+              <p className="text-[10px] font-bold uppercase text-emerald-700">Total Paid</p>
+              <p className="text-sm font-extrabold text-emerald-700 num">{formatINR(paymentSummary.amountPaid)}</p>
+            </div>
+            <div className="rounded-xl border border-line bg-surface p-3 space-y-1">
+              <p className="text-[10px] font-bold uppercase text-rose-700">Remaining Balance</p>
+              <p className="text-sm font-extrabold text-rose-700 num">{formatINR(paymentSummary.remainingBalance)}</p>
+            </div>
+            <div className="rounded-xl border border-line bg-surface p-3 space-y-1">
+              <p className="text-[10px] font-bold uppercase text-sky-700">Payment Progress</p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-extrabold text-sky-700 num">{paymentSummary.progressPercentage}%</span>
+                <StatusBadge status={paymentSummary.paymentStatus} size="sm" showDot={false} />
+              </div>
+            </div>
+          </div>
+
+          {/* Clean Progress Bar */}
+          <div className="space-y-1 pt-1">
+            <div className="flex justify-between text-[11px] font-bold text-ink-soft">
+              <span>Payment Progress Bar</span>
+              <span className="num">{paymentSummary.progressPercentage}% Completed</span>
+            </div>
+            <div className="h-2.5 w-full rounded-full bg-slate-200 overflow-hidden">
+              <div
+                className={`h-full transition-all duration-500 rounded-full ${
+                  paymentSummary.progressPercentage === 100
+                    ? 'bg-emerald-500'
+                    : paymentSummary.progressPercentage > 0
+                    ? 'bg-sky-500'
+                    : 'bg-slate-300'
+                }`}
+                style={{ width: `${paymentSummary.progressPercentage}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Payment History List */}
+          <div className="pt-2 space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold text-ink">
+              <span>Payment History ({paymentsList.length})</span>
+            </div>
+
+            {paymentsList.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-line bg-surface p-4 text-center text-xs text-ink-soft">
+                No payments recorded for this invoice yet.
+              </div>
+            ) : (
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden sm:block overflow-hidden rounded-xl border border-line bg-surface">
+                  <table className="w-full text-left text-xs">
+                    <thead className="border-b border-line bg-bg text-[10px] font-bold uppercase text-ink-soft">
+                      <tr>
+                        <th className="px-3 py-2">Payment #</th>
+                        <th className="px-3 py-2">Date</th>
+                        <th className="px-3 py-2 text-right">Amount</th>
+                        <th className="px-3 py-2">Method</th>
+                        <th className="px-3 py-2">Reference</th>
+                        <th className="px-3 py-2">Collected By</th>
+                        {isAdmin && <th className="px-3 py-2 text-right">Action</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line font-medium text-ink">
+                      {paymentsList.map((p) => (
+                        <tr key={p.id} className="hover:bg-slate-50/80">
+                          <td className="px-3 py-2 font-bold num">{p.paymentNumber}</td>
+                          <td className="px-3 py-2 num text-ink-soft">{p.paymentDate}</td>
+                          <td className="px-3 py-2 text-right font-extrabold text-emerald-700 num">{formatINR(p.amount)}</td>
+                          <td className="px-3 py-2 font-semibold">{p.paymentMethod}</td>
+                          <td className="px-3 py-2 num text-ink-soft">{p.referenceNumber || '—'}</td>
+                          <td className="px-3 py-2 text-ink-soft">{p.collectedBy}</td>
+                          {isAdmin && (
+                            <td className="px-3 py-2 text-right">
+                              {deleteConfirmId === p.id ? (
+                                <div className="flex items-center justify-end gap-1">
+                                  <button
+                                    onClick={() => handleDeletePayment(p.id)}
+                                    className="rounded-lg bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-rose-700"
+                                  >
+                                    Confirm
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteConfirmId(null)}
+                                    className="rounded-lg bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-ink-soft hover:bg-slate-300"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setDeleteConfirmId(p.id)}
+                                  className="text-ink-soft hover:text-rose-600 transition-colors p-1"
+                                  title="Delete payment entry"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Stacked Cards */}
+                <div className="sm:hidden space-y-2">
+                  {paymentsList.map((p) => (
+                    <div key={p.id} className="rounded-xl border border-line bg-surface p-3 space-y-1 text-xs">
+                      <div className="flex items-center justify-between font-bold">
+                        <span className="num">{p.paymentNumber}</span>
+                        <span className="text-emerald-700 font-extrabold num">{formatINR(p.amount)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-ink-soft">
+                        <span>{p.paymentDate} • {p.paymentMethod}</span>
+                        <span>By: {p.collectedBy}</span>
+                      </div>
+                      {p.referenceNumber && (
+                        <p className="text-[10px] text-ink-soft num">Ref: {p.referenceNumber}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -191,14 +348,6 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
                   <p className="text-xs text-ink whitespace-pre-wrap mt-0.5">{invoice.notes}</p>
                 </div>
               )}
-
-              {invoice.paymentMethod && (
-                <div className="text-xs text-ink-soft space-y-0.5">
-                  <p>Payment Method: <strong className="text-ink">{invoice.paymentMethod}</strong></p>
-                  {invoice.referenceNumber && <p>Reference / Transaction No: <strong className="text-ink num">{invoice.referenceNumber}</strong></p>}
-                  {invoice.paymentDate && <p>Payment Date: <strong className="text-ink num">{invoice.paymentDate}</strong></p>}
-                </div>
-              )}
             </div>
 
             <div className="w-full sm:w-64 space-y-2 rounded-xl border border-line bg-bg p-3 text-xs">
@@ -219,12 +368,12 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
 
               <div className="flex items-center justify-between text-emerald-700 font-bold border-t border-line/50 pt-1.5">
                 <span>Amount Paid</span>
-                <span className="num">{formatINR(invoice.amountPaid)}</span>
+                <span className="num">{formatINR(paymentSummary.amountPaid)}</span>
               </div>
 
               <div className="flex items-center justify-between text-rose-700 font-extrabold border-t border-line/50 pt-1.5">
                 <span>Balance Due</span>
-                <span className="num">{formatINR(invoice.balanceDue)}</span>
+                <span className="num">{formatINR(paymentSummary.remainingBalance)}</span>
               </div>
             </div>
           </div>

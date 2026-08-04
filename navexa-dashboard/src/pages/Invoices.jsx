@@ -17,6 +17,7 @@ import RecordInvoicePaymentModal from '../components/invoices/RecordInvoicePayme
 import ConfirmDialog from '../components/trips/ConfirmDialog'
 import EmptyState from '../components/ui/EmptyState'
 import StatusBadge from '../components/ui/StatusBadge'
+import { getInvoicePaymentSummary } from '../data/paymentStore'
 
 // Status badge styling helper
 const STATUS_COLORS = {
@@ -328,7 +329,7 @@ export default function InvoicesPage() {
               </thead>
               <tbody className="divide-y divide-line font-medium text-ink">
                 {filteredInvoices.map((invoice) => {
-                  const statusStyle = STATUS_COLORS[invoice.paymentStatus] || STATUS_COLORS.Draft
+                  const summary = getInvoicePaymentSummary(invoice.id, invoice.totalAmount, invoice.paymentStatus)
 
                   return (
                     <tr
@@ -367,11 +368,22 @@ export default function InvoicesPage() {
                         {formatINR(invoice.totalAmount)}
                       </td>
 
-                      {/* Payment Status */}
+                      {/* Payment Status & Progress */}
                       <td className="px-4 py-3.5">
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${statusStyle}`}>
-                          {invoice.paymentStatus}
-                        </span>
+                        <div className="flex flex-col items-start gap-1">
+                          <StatusBadge status={summary.paymentStatus} size="sm" />
+                          <div className="flex items-center gap-1.5 text-[10px] text-ink-soft font-bold num">
+                            <div className="h-1.5 w-10 rounded-full bg-slate-200 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${
+                                  summary.progressPercentage === 100 ? 'bg-emerald-500' : summary.progressPercentage > 0 ? 'bg-sky-500' : 'bg-slate-300'
+                                }`}
+                                style={{ width: `${summary.progressPercentage}%` }}
+                              />
+                            </div>
+                            <span>{summary.progressPercentage}%</span>
+                          </div>
+                        </div>
                       </td>
 
                       {/* Actions */}
@@ -565,6 +577,7 @@ export default function InvoicesPage() {
         onClose={() => setViewingInvoice(null)}
         onRecordPayment={(inv) => setPaymentInvoice(inv)}
         isAdmin={isAdmin}
+        currentUser={user}
       />
 
       {/* Record Payment Modal */}

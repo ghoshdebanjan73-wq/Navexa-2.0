@@ -212,29 +212,70 @@ export default function CustomerDetailPanel({ customer, isOpen, onClose, onEdit,
           {/* SECTION 4: PAYMENT & INVOICES SUMMARY */}
           <div className="rounded-2xl border border-line bg-surface p-4 space-y-3 shadow-2xs">
             <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary border-b border-line pb-2">
-              4. Payment & Invoices Summary
+              4. Payment Details & Customer 360° History
             </h4>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
+            <div className="grid grid-cols-3 gap-2.5 text-xs">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-2.5">
                 <p className="text-[10px] font-bold text-emerald-800 uppercase">Total Paid</p>
-                <p className="text-base font-extrabold text-emerald-900 num mt-0.5">{formatINR(stats.totalPaid)}</p>
+                <p className="text-sm font-extrabold text-emerald-900 num mt-0.5">{formatINR(stats.totalPaid)}</p>
               </div>
 
-              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3">
-                <p className="text-[10px] font-bold text-amber-800 uppercase">Pending Amount</p>
-                <p className="text-base font-extrabold text-amber-900 num mt-0.5">{formatINR(stats.pendingAmount)}</p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-2.5">
+                <p className="text-[10px] font-bold text-amber-800 uppercase">Outstanding Balance</p>
+                <p className="text-sm font-extrabold text-amber-900 num mt-0.5">{formatINR(stats.pendingAmount)}</p>
               </div>
+
+              <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-2.5">
+                <p className="text-[10px] font-bold text-sky-800 uppercase">Progress</p>
+                <p className="text-sm font-extrabold text-sky-900 num mt-0.5">{stats.paymentProgress || 0}%</p>
+              </div>
+            </div>
+
+            {/* Overall Customer Progress Bar */}
+            <div className="space-y-1 pt-1">
+              <div className="flex justify-between text-[10px] font-bold text-ink-soft">
+                <span>Overall Payment Progress</span>
+                <span className="num">{stats.paymentProgress || 0}%</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 rounded-full ${
+                    stats.paymentProgress === 100 ? 'bg-emerald-500' : stats.paymentProgress > 0 ? 'bg-sky-500' : 'bg-slate-300'
+                  }`}
+                  style={{ width: `${stats.paymentProgress || 0}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Customer Payment History */}
+            <div className="pt-2 border-t border-line space-y-2">
+              <p className="text-[11px] font-bold text-ink-soft uppercase">Payment History ({stats.customerPayments?.length || 0})</p>
+              {(!stats.customerPayments || stats.customerPayments.length === 0) ? (
+                <p className="text-xs text-ink-soft italic">No individual payment records logged yet.</p>
+              ) : (
+                <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                  {stats.customerPayments.map(p => (
+                    <div key={p.id} className="flex items-center justify-between rounded-xl bg-bg p-2 border border-line text-xs">
+                      <div>
+                        <p className="font-bold text-ink num">{p.paymentNumber} • {p.paymentMethod}</p>
+                        <p className="text-[10px] text-ink-soft num">{p.paymentDate} {p.referenceNumber ? `• Ref: ${p.referenceNumber}` : ''}</p>
+                      </div>
+                      <span className="font-extrabold text-emerald-700 num">{formatINR(p.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Customer Related Invoices */}
             <div className="pt-2 border-t border-line space-y-2">
-              <p className="text-[11px] font-bold text-ink-soft uppercase">Customer Invoices ({liveInvoices.filter(i => i.customerId === customer.id || i.customerName === customer.name).length})</p>
-              {liveInvoices.filter(i => i.customerId === customer.id || i.customerName === customer.name).length === 0 ? (
+              <p className="text-[11px] font-bold text-ink-soft uppercase">Customer Invoices ({(stats.customerInvoices || []).length})</p>
+              {(!stats.customerInvoices || stats.customerInvoices.length === 0) ? (
                 <p className="text-xs text-ink-soft italic">No invoices generated yet for this customer.</p>
               ) : (
-                <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                  {liveInvoices.filter(i => i.customerId === customer.id || i.customerName === customer.name).map(inv => (
+                <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                  {stats.customerInvoices.map(inv => (
                     <div key={inv.id} className="flex items-center justify-between rounded-xl bg-bg p-2.5 border border-line text-xs">
                       <div>
                         <p className="font-extrabold text-primary num">{inv.invoiceNumber}</p>
@@ -243,7 +284,7 @@ export default function CustomerDetailPanel({ customer, isOpen, onClose, onEdit,
                       <div className="text-right">
                         <p className="font-bold text-ink num">{formatINR(inv.totalAmount)}</p>
                         <span className={`inline-flex rounded-full px-2 py-0.2 text-[9px] font-bold ${
-                          inv.paymentStatus === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                          inv.paymentStatus === 'Paid' ? 'bg-emerald-50 text-emerald-700' : inv.paymentStatus === 'In Progress' ? 'bg-sky-50 text-sky-700' : 'bg-amber-50 text-amber-700'
                         }`}>
                           {inv.paymentStatus}
                         </span>

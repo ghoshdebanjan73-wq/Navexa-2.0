@@ -235,6 +235,23 @@ export async function addTransaction(payload, userId) {
   return newTxn
 }
 
+/** Remove transaction by ID or reference string */
+export async function removeTransactionByReference(idOrRef) {
+  const idx = liveTransactions.findIndex(t => t.id === idOrRef || t.reference === idOrRef)
+  if (idx === -1) return false
+
+  const target = liveTransactions[idx]
+  liveTransactions.splice(idx, 1)
+  notify()
+
+  try {
+    await supabase.from('finance_transactions').delete().eq('id', target.id)
+  } catch (err) {
+    console.error('Error removing transaction from cloud:', err)
+  }
+  return true
+}
+
 /** Update transaction */
 export async function updateTransaction(id, updates) {
   const idx = liveTransactions.findIndex(t => t.id === id)

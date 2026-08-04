@@ -114,6 +114,9 @@ export async function logAuditEvent({
   return newLog
 }
 
+/** Alias export for backward compatibility */
+export const addAuditLog = logAuditEvent
+
 /**
  * Fetch and filter audit logs
  */

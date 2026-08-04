@@ -6,6 +6,8 @@
  */
 
 import { liveTrips } from './tripStore.js'
+import { liveInvoices } from './invoiceStore.js'
+import { livePayments } from './paymentStore.js'
 import { addActivity } from './transactionStore.js'
 import { logAuditEvent } from './auditStore.js'
 import { supabase } from '../lib/supabase'
@@ -147,14 +149,31 @@ export function getCustomer360Stats(customerName, customerId = null) {
   const totalDistance = completedTripsList.reduce((sum, t) => sum + (t.estimatedDistance || 0), 0)
   const avgTripValue = completedTrips > 0 ? Math.round(lifetimeRevenue / completedTrips) : 0
 
-  // Payment Stats
-  const totalPaid = customerTrips
-    .filter(t => t.paymentStatus === 'Paid')
-    .reduce((sum, t) => sum + (t.actualFare || t.fare || 0), 0)
+  // Payment & Invoice Stats
+  const customerInvoices = liveInvoices.filter(inv => {
+    if (customerId && inv.customerId === customerId) return true
+    if (customerName && inv.customerName?.toLowerCase() === customerName.toLowerCase()) return true
+    return false
+  })
 
-  const pendingAmount = customerTrips
-    .filter(t => t.paymentStatus !== 'Paid' && t.status !== 'Cancelled')
-    .reduce((sum, t) => sum + (t.actualFare || t.fare || 0), 0)
+  const customerPayments = livePayments.filter(p => {
+    if (customerId && p.customerId === customerId) return true
+    if (customerInvoices.some(inv => inv.id === p.invoiceId)) return true
+    return false
+  }).sort((a, b) => new Date(b.paymentDate || b.createdAt) - new Date(a.paymentDate || a.createdAt))
+
+  const totalInvoiceAmount = customerInvoices.reduce((sum, inv) => sum + (Number(inv.totalAmount) || 0), 0)
+  const totalPaid = customerInvoices.length > 0 
+    ? customerInvoices.reduce((sum, inv) => sum + (Number(inv.amountPaid) || 0), 0)
+    : customerTrips.filter(t => t.paymentStatus === 'Paid').reduce((sum, t) => sum + (t.actualFare || t.fare || 0), 0)
+
+  const pendingAmount = customerInvoices.length > 0
+    ? customerInvoices.filter(inv => inv.paymentStatus !== 'Cancelled').reduce((sum, inv) => sum + (Number(inv.balanceDue) || 0), 0)
+    : customerTrips.filter(t => t.paymentStatus !== 'Paid' && t.status !== 'Cancelled').reduce((sum, t) => sum + (t.actualFare || t.fare || 0), 0)
+
+  const paymentProgress = totalInvoiceAmount > 0 
+    ? Math.min(100, Math.round((totalPaid / totalInvoiceAmount) * 100))
+    : (totalPaid > 0 ? 100 : 0)
 
   // Last trip & payment date
   const sortedByDate = [...customerTrips].sort((a, b) => new Date(b.createdAt || b.tripDate) - new Date(a.createdAt || a.tripDate))
@@ -180,6 +199,8 @@ export function getCustomer360Stats(customerName, customerId = null) {
 
   return {
     customerTrips,
+    customerInvoices,
+    customerPayments,
     totalTrips,
     completedTrips,
     cancelledTrips,
@@ -189,6 +210,8 @@ export function getCustomer360Stats(customerName, customerId = null) {
     avgTripValue,
     totalPaid,
     pendingAmount,
+    totalInvoiceAmount,
+    paymentProgress,
     lastTrip,
     favoritePickup,
     favoriteDrop,

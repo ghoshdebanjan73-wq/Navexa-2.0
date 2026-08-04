@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { X, CreditCard, Loader2, IndianRupee, AlertCircle } from 'lucide-react'
-import { recordInvoicePayment, PAYMENT_METHODS } from '../../data/invoiceStore'
+import { recordInvoicePaymentRecord, PAYMENT_METHODS } from '../../data/paymentStore'
 import { formatINR } from '../../data/tripStore'
+import { useUser } from '../../context/UserContext'
 
 export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, onSuccess }) {
+  const { user } = useUser()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -11,20 +13,25 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
   const [paymentMethod, setPaymentMethod] = useState('UPI')
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0])
   const [referenceNumber, setReferenceNumber] = useState('')
+  const [collectedBy, setCollectedBy] = useState('')
   const [notes, setNotes] = useState('')
 
   useEffect(() => {
     if (isOpen && invoice) {
       setError('')
-      setAmountPaid(String(invoice.balanceDue || invoice.totalAmount || 0))
+      const remaining = Number(invoice.balanceDue !== undefined ? invoice.balanceDue : (invoice.totalAmount - (invoice.amountPaid || 0)))
+      setAmountPaid(String(Math.max(0, remaining)))
       setPaymentMethod('UPI')
       setPaymentDate(new Date().toISOString().split('T')[0])
       setReferenceNumber('')
+      setCollectedBy(user?.name || 'Admin')
       setNotes('')
     }
-  }, [isOpen, invoice])
+  }, [isOpen, invoice, user?.name])
 
   if (!isOpen || !invoice) return null
+
+  const remainingBalance = Number(invoice.balanceDue !== undefined ? invoice.balanceDue : (invoice.totalAmount - (invoice.amountPaid || 0)))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -32,7 +39,12 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
 
     const val = Number(amountPaid)
     if (isNaN(val) || val <= 0) {
-      setError('Please enter a valid payment amount.')
+      setError('Please enter a valid payment amount greater than 0.')
+      return
+    }
+
+    if (val > remainingBalance + 0.01) {
+      setError(`Payment amount (${formatINR(val)}) cannot exceed the remaining balance (${formatINR(remainingBalance)}).`)
       return
     }
 
@@ -40,15 +52,17 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
     setError('')
 
     try {
-      await recordInvoicePayment(invoice.id, {
-        amountPaid: val,
+      const newPay = recordInvoicePaymentRecord({
+        invoiceId: invoice.id,
+        amount: val,
         paymentMethod,
         paymentDate,
         referenceNumber: referenceNumber.trim(),
+        collectedBy: collectedBy.trim() || user?.name || 'Admin',
         notes: notes.trim(),
-      })
+      }, user)
 
-      if (onSuccess) onSuccess(`Payment of ₹${val} recorded successfully!`)
+      if (onSuccess) onSuccess(`Payment ${newPay.paymentNumber} of ₹${val.toLocaleString('en-IN')} recorded successfully!`)
       onClose()
     } catch (err) {
       console.error('Error recording invoice payment:', err)
@@ -86,21 +100,21 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
 
         {/* Error Alert */}
         {error && (
-          <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+          <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700 animate-slideDown">
             <AlertCircle size={16} className="shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {/* Balance Info Box */}
-        <div className="rounded-xl border border-line bg-bg p-3 flex items-center justify-between text-xs">
+        <div className="rounded-xl border border-line bg-bg p-3.5 flex items-center justify-between text-xs">
           <div>
-            <p className="text-[10px] font-bold text-ink-soft uppercase">Total Invoice</p>
+            <p className="text-[10px] font-bold text-ink-soft uppercase tracking-wider">Total Invoice</p>
             <p className="font-extrabold text-ink num text-sm">{formatINR(invoice.totalAmount)}</p>
           </div>
-          <div>
-            <p className="text-[10px] font-bold text-ink-soft uppercase">Balance Due</p>
-            <p className="font-extrabold text-rose-700 num text-sm">{formatINR(invoice.balanceDue)}</p>
+          <div className="text-right">
+            <p className="text-[10px] font-bold text-ink-soft uppercase tracking-wider">Remaining Balance</p>
+            <p className="font-extrabold text-rose-700 num text-sm">{formatINR(remainingBalance)}</p>
           </div>
         </div>
 
@@ -118,8 +132,9 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
               <input
                 type="number"
                 required
+                step="any"
                 min="1"
-                max={invoice.balanceDue || invoice.totalAmount}
+                max={remainingBalance}
                 value={amountPaid}
                 onChange={(e) => setAmountPaid(e.target.value)}
                 className="w-full rounded-xl border border-line bg-bg pl-8 pr-3.5 py-2 text-xs font-bold text-ink num outline-none transition-all focus:bg-surface focus:border-primary"
@@ -127,41 +142,67 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
             </div>
           </div>
 
-          {/* Payment Method */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-ink">Payment Method</label>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs font-semibold text-ink outline-none transition-all focus:bg-surface focus:border-primary cursor-pointer"
-            >
-              {PAYMENT_METHODS.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+          {/* Payment Method & Date */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-ink">Payment Method</label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs font-semibold text-ink outline-none transition-all focus:bg-surface focus:border-primary cursor-pointer"
+              >
+                {PAYMENT_METHODS.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-ink">Payment Date</label>
+              <input
+                type="date"
+                required
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-xs font-bold text-ink num outline-none transition-all focus:bg-surface focus:border-primary"
+              />
+            </div>
           </div>
 
-          {/* Payment Date */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-ink">Payment Date</label>
-            <input
-              type="date"
-              required
-              value={paymentDate}
-              onChange={(e) => setPaymentDate(e.target.value)}
-              className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs font-bold text-ink num outline-none transition-all focus:bg-surface focus:border-primary"
-            />
+          {/* Reference / UTR & Collected By */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-ink">Reference / UTR / Txn No</label>
+              <input
+                type="text"
+                value={referenceNumber}
+                onChange={(e) => setReferenceNumber(e.target.value)}
+                placeholder="e.g. UTR987654"
+                className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs font-semibold text-ink num outline-none transition-all focus:bg-surface focus:border-primary"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-ink">Collected By</label>
+              <input
+                type="text"
+                value={collectedBy}
+                onChange={(e) => setCollectedBy(e.target.value)}
+                placeholder="Collector name"
+                className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs font-semibold text-ink outline-none transition-all focus:bg-surface focus:border-primary"
+              />
+            </div>
           </div>
 
-          {/* Reference / UTR Number */}
+          {/* Notes */}
           <div className="space-y-1">
-            <label className="text-xs font-bold text-ink">Reference / UTR / Transaction No</label>
+            <label className="text-xs font-bold text-ink">Notes / Remarks</label>
             <input
               type="text"
-              value={referenceNumber}
-              onChange={(e) => setReferenceNumber(e.target.value)}
-              placeholder="e.g. UTR12345678"
-              className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs font-semibold text-ink num outline-none transition-all focus:bg-surface focus:border-primary"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional payment notes..."
+              className="w-full rounded-xl border border-line bg-bg px-3.5 py-2 text-xs font-semibold text-ink outline-none transition-all focus:bg-surface focus:border-primary"
             />
           </div>
 

@@ -19,12 +19,11 @@ const STYLES = {
 
   // Financial & Payment Statuses
   Paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'In Progress': 'bg-sky-50 text-sky-700 border-sky-200',
+  Pending: 'bg-amber-50 text-amber-700 border-amber-200',
   Unpaid: 'bg-rose-50 text-rose-700 border-rose-200',
-  Partial: 'bg-amber-50 text-amber-700 border-amber-200',
-  'Partially Paid': 'bg-amber-50 text-amber-700 border-amber-200',
   Overdue: 'bg-rose-50 text-rose-700 border-rose-200',
   Draft: 'bg-slate-100 text-slate-600 border-slate-200',
-  Pending: 'bg-warning-bg text-warning border-warning/20',
   Failed: 'bg-danger-bg text-danger border-danger/20',
 }
 

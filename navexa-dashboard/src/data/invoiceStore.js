@@ -13,11 +13,9 @@ import { addTransaction } from './transactionStore'
 const STORAGE_KEY = 'navexa_invoices'
 
 export const INVOICE_STATUSES = [
-  'Draft',
-  'Sent',
+  'Pending',
+  'In Progress',
   'Paid',
-  'Partially Paid',
-  'Overdue',
   'Cancelled',
 ]
 
@@ -26,6 +24,8 @@ export const PAYMENT_METHODS = [
   'UPI',
   'Bank Transfer',
   'Card',
+  'Cheque',
+  'Other',
 ]
 
 function loadInvoicesFromStorage() {
@@ -531,25 +531,25 @@ export function getInvoiceStats() {
   const total = liveInvoices.length
   const paidList = liveInvoices.filter(inv => inv.paymentStatus === 'Paid')
   const paidCount = paidList.length
-  const pendingCount = liveInvoices.filter(inv => inv.paymentStatus === 'Sent' || inv.paymentStatus === 'Partially Paid').length
+  const pendingCount = liveInvoices.filter(inv => inv.paymentStatus === 'Pending' || inv.paymentStatus === 'In Progress' || inv.paymentStatus === 'Sent' || inv.paymentStatus === 'Partially Paid').length
   const overdueCount = liveInvoices.filter(inv => inv.paymentStatus === 'Overdue').length
 
-  const totalPaidRevenue = paidList.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0)
+  const totalPaidRevenue = liveInvoices.reduce((sum, inv) => sum + (Number(inv.amountPaid) || 0), 0)
   const totalPendingReceivables = liveInvoices
-    .filter(inv => inv.paymentStatus !== 'Paid' && inv.paymentStatus !== 'Cancelled')
-    .reduce((sum, inv) => sum + (inv.balanceDue || 0), 0)
+    .filter(inv => inv.paymentStatus !== 'Cancelled')
+    .reduce((sum, inv) => sum + (Number(inv.balanceDue) || 0), 0)
 
   // Revenue this month
   const now = new Date()
   const currentMonth = now.getMonth()
   const currentYear = now.getFullYear()
 
-  const revenueThisMonth = paidList
+  const revenueThisMonth = liveInvoices
     .filter(inv => {
       const d = new Date(inv.paymentDate || inv.createdAt)
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear
     })
-    .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0)
+    .reduce((sum, inv) => sum + (Number(inv.amountPaid) || 0), 0)
 
   return {
     total,
