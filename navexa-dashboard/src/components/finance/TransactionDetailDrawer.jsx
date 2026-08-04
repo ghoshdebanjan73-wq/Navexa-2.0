@@ -312,6 +312,69 @@ export default function TransactionDetailDrawer({
             </Section>
           )}
 
+          {/* --- CATEGORY-SPECIFIC EXPENSE DETAILS (Fuel, Toll, Parking, Maintenance) --- */}
+          {!isIncome && txn.expenseMetadata && (() => {
+            const m = typeof txn.expenseMetadata === 'string'
+              ? (() => { try { return JSON.parse(txn.expenseMetadata) } catch { return {} } })()
+              : txn.expenseMetadata
+
+            const cat = m.category || txn.category
+
+            // FUEL DETAILS
+            if (cat === 'Fuel') {
+              return (
+                <Section title="⛽ Fuel Details">
+                  <DetailRow icon={Fuel} label="Fuel Type" value={m.fuelType} accent="bg-amber-50 text-amber-700" />
+                  <DetailRow icon={Hash} label="Quantity (Litres)" value={m.quantity ? `${m.quantity} L` : null} mono accent="bg-amber-50 text-amber-700" />
+                  <DetailRow icon={Hash} label="Rate per Litre" value={m.ratePerUnit ? `₹${m.ratePerUnit}/L` : null} mono accent="bg-amber-50 text-amber-700" />
+                  <DetailRow icon={Car} label="Odometer Reading" value={m.odometer ? `${Number(m.odometer).toLocaleString('en-IN')} km` : null} mono accent="bg-slate-100 text-slate-700" />
+                  <DetailRow icon={MapPin} label="Fuel Pump Name" value={m.pumpName} accent="bg-slate-100 text-slate-700" />
+                  <DetailRow icon={MapPin} label="Pump Location" value={m.pumpLocation} accent="bg-slate-100 text-slate-700" />
+                </Section>
+              )
+            }
+
+            // TOLL DETAILS
+            if (cat === 'Toll') {
+              return (
+                <Section title="🛣️ Toll Details">
+                  <DetailRow icon={Route} label="Toll Plaza Name" value={m.plazaName} accent="bg-sky-50 text-sky-700" />
+                  <DetailRow icon={MapPin} label="Plaza Location" value={m.plazaLocation} accent="bg-sky-50 text-sky-700" />
+                  <DetailRow icon={Hash} label="FASTag Used" value={m.fastagUsed} accent="bg-sky-50 text-sky-700" />
+                  <DetailRow icon={Hash} label="Transaction No" value={m.transactionNo} mono accent="bg-slate-100 text-slate-700" />
+                </Section>
+              )
+            }
+
+            // PARKING DETAILS
+            if (cat === 'Parking') {
+              return (
+                <Section title="🅿️ Parking Details">
+                  <DetailRow icon={MapPin} label="Parking Name" value={m.parkingName} accent="bg-purple-50 text-purple-700" />
+                  <DetailRow icon={MapPin} label="Location" value={m.location} accent="bg-purple-50 text-purple-700" />
+                  <DetailRow icon={Clock} label="Duration" value={m.hours ? `${m.hours} hour(s)` : null} mono accent="bg-purple-50 text-purple-700" />
+                </Section>
+              )
+            }
+
+            // MAINTENANCE / REPAIR DETAILS
+            if (cat === 'Maintenance' || cat === 'Repair' || cat === 'Tyres') {
+              return (
+                <Section title="🔧 Service / Repair Details">
+                  <DetailRow icon={Building2} label="Workshop Name" value={m.workshopName} accent="bg-indigo-50 text-indigo-700" />
+                  <DetailRow icon={User} label="Mechanic Name" value={m.mechanicName} accent="bg-indigo-50 text-indigo-700" />
+                  <DetailRow icon={Phone} label="Workshop Phone" value={m.workshopPhone} mono accent="bg-indigo-50 text-indigo-700" />
+                  <DetailRow icon={FileText} label="Invoice / Bill No" value={m.invoiceNumber} mono accent="bg-slate-100 text-slate-700" />
+                  <DetailRow icon={Hash} label="Work Description" value={m.workDescription} accent="bg-slate-100 text-slate-700" />
+                  <DetailRow icon={Hash} label="Parts Replaced" value={m.partsReplaced} accent="bg-slate-100 text-slate-700" />
+                  <DetailRow icon={Calendar} label="Next Service Due" value={m.nextServiceDate} mono accent="bg-amber-50 text-amber-700" />
+                </Section>
+              )
+            }
+
+            return null
+          })()}
+
           {/* --- AUDIT & METADATA --- */}
           <Section title="Record Metadata">
             <DetailRow icon={Shield} label="Recorded By" value={txn.createdBy} accent="bg-slate-100 text-slate-700" />

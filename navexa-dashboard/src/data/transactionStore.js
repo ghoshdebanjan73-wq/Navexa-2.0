@@ -11,31 +11,30 @@ import { liveInvoices } from './invoiceStore'
 
 const STORAGE_KEY = 'navexa_finance_transactions'
 
+// Primary Expense Categories (structured for professional fleet management)
 export const EXPENSE_CATEGORIES = [
   'Fuel',
-  'Petrol',
-  'Diesel',
-  'CNG',
-  'Fastag',
   'Toll',
   'Parking',
-  'Vehicle Service',
-  'Vehicle Repair',
   'Maintenance',
+  'Repair',
   'Tyres',
   'Insurance',
-  'Tax',
-  'Cleaning',
+  'Pollution Certificate',
+  'Road Tax',
+  'Permit',
   'Driver Salary',
   'Driver Allowance',
   'Driver Payment',
+  'Cleaning',
+  'Washing',
   'Office Expense',
   'Miscellaneous',
-  'Permit',
-  'Software',
-  'Marketing',
   'Other',
 ]
+
+// Fuel sub-types
+export const FUEL_TYPES = ['Petrol', 'Diesel', 'CNG', 'EV Charging']
 
 export const INCOME_CATEGORIES = [
   'Invoice Payment',
@@ -203,6 +202,8 @@ export async function addTransaction(payload, userId) {
     createdBy: payload.createdBy || 'Dispatcher',
     createdAt: nowISO,
     updatedAt: nowISO,
+    // Category-specific metadata (fuel details, toll details, maintenance details, etc.)
+    expenseMetadata: payload.expenseMetadata || null,
   }
 
   // Idempotent Invoice check: If transaction has invoiceId, prevent duplicate invoice payments
@@ -240,6 +241,7 @@ export async function addTransaction(payload, userId) {
       reference_number: newTxn.reference || null,
       receipt_path: newTxn.receiptPath || null,
       notes: newTxn.notes || null,
+      expense_metadata: newTxn.expenseMetadata ? JSON.stringify(newTxn.expenseMetadata) : null,
       created_by: newTxn.createdBy,
       created_at: newTxn.createdAt,
       updated_at: newTxn.updatedAt,
@@ -414,7 +416,7 @@ export function filterAndSortTransactions(list, {
     result = result.filter(t => new Date(t.date) >= cutoff)
   }
 
-  // Multi-Field Search (Customer, Driver, Vehicle, Invoice #, Trip ID, Category, Payment Method, Reference, Vendor, Bill Number, Transaction ID)
+  // Multi-Field Search (Customer, Driver, Vehicle, Invoice #, Trip ID, Category, Method, Reference, Vendor, Bill No, TxnID, Pump/Workshop/Plaza)
   if (search && search.trim()) {
     const q = search.trim().toLowerCase()
     result = result.filter(t => {
@@ -425,13 +427,28 @@ export function filterAndSortTransactions(list, {
       const driverName = driverMap[t.driverId]?.name || ''
       const tripRef = tripMap[t.tripId]?.id || t.tripId || ''
       const invoiceRef = invoiceMap[t.invoiceId]?.invoiceNumber || t.invoiceId || ''
+      // Parse expenseMetadata for deep search
+      let metaStr = ''
+      if (t.expenseMetadata) {
+        const m = typeof t.expenseMetadata === 'string'
+          ? (() => { try { return JSON.parse(t.expenseMetadata) } catch { return {} } })()
+          : t.expenseMetadata
+        metaStr = [
+          m.fuelType, m.pumpName, m.pumpLocation, m.quantity,
+          m.plazaName, m.plazaLocation, m.transactionNo,
+          m.parkingName, m.location, m.hours,
+          m.workshopName, m.mechanicName, m.invoiceNumber,
+          m.workDescription, m.partsReplaced, m.workshopPhone,
+          m.nextServiceDate,
+        ].filter(Boolean).join(' ')
+      }
       const haystack = [
         t.id, t.description, t.category, t.subcategory,
         t.reference, t.billNumber, t.invoiceId, t.tripId,
         t.vehicleId, t.driverId, t.vendor, t.vendorPhone,
         t.paymentMethod, t.createdBy, t.notes,
         customerName, customerPhone, vehicleName, vehicleReg,
-        driverName, tripRef, invoiceRef
+        driverName, tripRef, invoiceRef, metaStr,
       ].join(' ').toLowerCase()
       return haystack.includes(q)
     })
@@ -513,25 +530,31 @@ export function computeFilteredFinancialSummary(transactions = [], invoices = []
     .filter(i => i.paymentStatus !== 'Paid' && i.paymentStatus !== 'Cancelled')
     .reduce((sum, i) => sum + (Number(i.balanceDue) || 0), 0)
 
-  // Expense Category Breakdowns
+  // Expense Category Breakdowns (aligned with new professional category names)
   const fuelExpenses = periodTxns
-    .filter(t => t.type === 'Expense' && (t.category === 'Fuel' || (t.description && t.description.toLowerCase().includes('fuel'))))
+    .filter(t => t.type === 'Expense' && t.category === 'Fuel')
     .reduce((sum, t) => sum + t.amount, 0)
 
   const tollExpenses = periodTxns
-    .filter(t => t.type === 'Expense' && (t.category === 'Toll' || (t.description && t.description.toLowerCase().includes('toll'))))
+    .filter(t => t.type === 'Expense' && (t.category === 'Toll' || t.category === 'Parking'))
     .reduce((sum, t) => sum + t.amount, 0)
 
   const maintenanceExpenses = periodTxns
-    .filter(t => t.type === 'Expense' && (t.category === 'Vehicle Service' || t.category === 'Vehicle Repair' || t.category === 'Maintenance' || (t.description && t.description.toLowerCase().includes('service'))))
+    .filter(t => t.type === 'Expense' && (
+      t.category === 'Maintenance' || t.category === 'Repair' ||
+      t.category === 'Tyres' || t.category === 'Cleaning' || t.category === 'Washing'
+    ))
     .reduce((sum, t) => sum + t.amount, 0)
 
   const driverExpenses = periodTxns
-    .filter(t => t.type === 'Expense' && (t.category === 'Driver Payment' || (t.description && t.description.toLowerCase().includes('driver'))))
+    .filter(t => t.type === 'Expense' && (
+      t.category === 'Driver Payment' || t.category === 'Driver Salary' || t.category === 'Driver Allowance'
+    ))
     .reduce((sum, t) => sum + t.amount, 0)
 
   const specifiedCatExpenses = fuelExpenses + tollExpenses + maintenanceExpenses + driverExpenses
   const otherExpenses = Math.max(0, totalExpenses - specifiedCatExpenses)
+
 
   // Daily Averages
   const safeDays = Math.max(1, daysCount)
