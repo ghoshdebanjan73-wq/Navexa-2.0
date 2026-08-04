@@ -4,6 +4,7 @@ import {
   DollarSign, Settings, Eye, ChevronLeft, ChevronRight, X, ArrowRight
 } from 'lucide-react'
 import { getFilteredAuditLogs, subscribeAuditLogs } from '../data/auditStore'
+import EmptyState from '../components/ui/EmptyState'
 import { useUser } from '../context/UserContext'
 import { useRouter } from '../context/RouterContext'
 
@@ -102,7 +103,7 @@ export default function ActivityLogPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1440px] w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-20 md:pb-8 space-y-6">
+    <div className="page-container">
       
       {/* Header Bar */}
       <div className="flex flex-col gap-2 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -188,10 +189,11 @@ export default function ActivityLogPage() {
 
       {/* Main Results Section */}
       {logsState.logs.length === 0 ? (
-        <div className="rounded-2xl border border-line bg-surface p-12 text-center text-xs text-ink-soft space-y-2">
-          <p className="text-base font-extrabold text-ink">No activity recorded yet</p>
-          <p className="max-w-md mx-auto">Important changes made across Navexa will appear here.</p>
-        </div>
+        <EmptyState
+          icon={History}
+          title="No activity recorded yet"
+          description="Important business activity and changes made across Navexa will appear here."
+        />
       ) : (
         <div className="space-y-4">
           

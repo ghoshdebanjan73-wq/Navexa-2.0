@@ -14,6 +14,7 @@ import AddCustomerModal from '../components/customers/AddCustomerModal'
 import EditCustomerModal from '../components/customers/EditCustomerModal'
 import CustomerDetailPanel from '../components/customers/CustomerDetailPanel'
 import ConfirmDialog from '../components/trips/ConfirmDialog'
+import EmptyState from '../components/ui/EmptyState'
 
 // Metric Chip Component
 function MetricChip({ label, value, active, colorStyle, onClick }) {
@@ -107,7 +108,7 @@ export default function CustomersPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+    <div className="page-container">
       
       {/* Toast Notification */}
       {toast && (
@@ -238,25 +239,18 @@ export default function CustomersPage() {
 
       {/* Customer Content Views */}
       {filteredCustomers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-surface p-12 text-center space-y-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary">
-            <Users size={24} />
-          </div>
-          <h3 className="text-sm font-bold text-ink">No customers found</h3>
-          <p className="text-xs text-ink-soft max-w-sm">
-            {search || statusTab !== 'All' || specialFilter !== 'All'
+        <EmptyState
+          icon={Users}
+          title="No customers found"
+          description={
+            search || statusTab !== 'All' || specialFilter !== 'All'
               ? 'No customer matches your search or filter parameters.'
-              : 'Add customer profiles to log trips, track lifetime revenue, and manage contact preferences.'}
-          </p>
-          {isAdmin && !search && statusTab === 'All' && specialFilter === 'All' && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-primary-600 transition-colors cursor-pointer"
-            >
-              <Plus size={15} /> Add Customer
-            </button>
-          )}
-        </div>
+              : 'Add customer profiles to log trips, track lifetime revenue, and manage contact preferences.'
+          }
+          actionLabel={isAdmin && !search && statusTab === 'All' && specialFilter === 'All' ? 'Add Customer' : undefined}
+          onAction={isAdmin && !search && statusTab === 'All' && specialFilter === 'All' ? () => setShowAddModal(true) : undefined}
+          actionIcon={Plus}
+        />
       ) : (
         <>
           {/* DESKTOP TABLE VIEW */}

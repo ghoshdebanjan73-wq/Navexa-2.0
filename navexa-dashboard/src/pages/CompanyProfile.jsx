@@ -237,7 +237,7 @@ export default function CompanyProfilePage() {
   }
 
   return (
-    <div className="relative mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+    <div className="page-container max-w-5xl">
       {/* Toast Alert */}
       {toast && (
         <div

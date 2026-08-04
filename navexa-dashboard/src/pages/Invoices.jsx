@@ -15,6 +15,8 @@ import { liveCustomers, subscribeCustomers } from '../data/customerStore'
 import InvoiceDetailModal from '../components/invoices/InvoiceDetailModal'
 import RecordInvoicePaymentModal from '../components/invoices/RecordInvoicePaymentModal'
 import ConfirmDialog from '../components/trips/ConfirmDialog'
+import EmptyState from '../components/ui/EmptyState'
+import StatusBadge from '../components/ui/StatusBadge'
 
 // Status badge styling helper
 const STATUS_COLORS = {
@@ -125,7 +127,7 @@ export default function InvoicesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+    <div className="page-container">
       
       {/* Toast Alert */}
       {toast && (
@@ -295,25 +297,18 @@ export default function InvoicesPage() {
 
       {/* Content Views */}
       {filteredInvoices.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-surface p-12 text-center space-y-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary">
-            <FileText size={24} />
-          </div>
-          <h3 className="text-sm font-bold text-ink">No invoices found</h3>
-          <p className="text-xs text-ink-soft max-w-sm">
-            {search || statusFilter !== 'All'
+        <EmptyState
+          icon={FileText}
+          title="No invoices found"
+          description={
+            search || statusFilter !== 'All'
               ? 'No invoice matches your search or filter criteria.'
-              : 'Auto-generate invoices from completed trips to start managing billing and receivables.'}
-          </p>
-          {isAdmin && !search && statusFilter === 'All' && (
-            <button
-              onClick={() => setShowAutoGenerateModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-primary-600 transition-colors cursor-pointer"
-            >
-              <Plus size={15} /> Generate Invoice from Trip
-            </button>
-          )}
-        </div>
+              : 'Auto-generate invoices from completed trips to start managing billing and receivables.'
+          }
+          actionLabel={isAdmin && !search && statusFilter === 'All' ? 'Generate Invoice from Trip' : undefined}
+          onAction={isAdmin && !search && statusFilter === 'All' ? () => setShowAutoGenerateModal(true) : undefined}
+          actionIcon={Plus}
+        />
       ) : (
         <>
           {/* DESKTOP TABLE VIEW */}

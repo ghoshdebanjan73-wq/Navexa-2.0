@@ -10,6 +10,7 @@ export default {
           100: '#D6E0F5',
           400: '#3A5AA0',
           600: '#22397A',
+          700: '#1A295C',
           900: '#172554',
         },
         accent: {
@@ -26,6 +27,10 @@ export default {
           soft: '#64748B',
         },
         line: '#E2E8F0',
+        info: {
+          DEFAULT: '#0EA5E9',
+          bg: '#F0F9FF',
+        },
         success: {
           DEFAULT: '#16A34A',
           bg: '#EEFBF3',
@@ -56,12 +61,32 @@ export default {
           '0%': { opacity: 0, transform: 'translateY(6px)' },
           '100%': { opacity: 1, transform: 'translateY(0)' },
         },
+        fadeIn: {
+          '0%': { opacity: 0 },
+          '100%': { opacity: 1 },
+        },
+        scaleUp: {
+          '0%': { opacity: 0, transform: 'scale(0.96)' },
+          '100%': { opacity: 1, transform: 'scale(1)' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(100%)' },
+          '100%': { transform: 'translateY(0)' },
+        },
+        slideDown: {
+          '0%': { opacity: 0, transform: 'translateY(-8px)' },
+          '100%': { opacity: 1, transform: 'translateY(0)' },
+        },
         dash: {
           to: { strokeDashoffset: 0 },
         },
       },
       animation: {
-        fadeUp: 'fadeUp 0.4s ease-out both',
+        fadeUp: 'fadeUp 0.3s ease-out both',
+        fadeIn: 'fadeIn 0.2s ease-out both',
+        scaleUp: 'scaleUp 0.2s ease-out both',
+        slideUp: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both',
+        slideDown: 'slideDown 0.25s ease-out both',
         dash: 'dash 1.2s ease-out forwards',
       },
     },

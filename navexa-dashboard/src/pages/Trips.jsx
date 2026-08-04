@@ -15,6 +15,8 @@ import AddTripModal from '../components/trips/AddTripModal'
 import EditTripModal from '../components/trips/EditTripModal'
 import TripDetailPanel from '../components/trips/TripDetailPanel'
 import ConfirmDialog from '../components/trips/ConfirmDialog'
+import EmptyState from '../components/ui/EmptyState'
+import StatusBadge from '../components/ui/StatusBadge'
 
 // Status Stage Colors
 export const STAGE_COLORS = {
@@ -139,7 +141,7 @@ export default function TripsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+    <div className="page-container">
       
       {/* Toast Alert */}
       {toast && (
@@ -326,25 +328,18 @@ export default function TripsPage() {
 
       {/* Trip List Views */}
       {filteredTrips.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-surface p-12 text-center space-y-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary">
-            <Route size={24} />
-          </div>
-          <h3 className="text-sm font-bold text-ink">No trips found</h3>
-          <p className="text-xs text-ink-soft max-w-sm">
-            {search || statusFilter !== 'All'
+        <EmptyState
+          icon={Route}
+          title="No trips found"
+          description={
+            search || statusFilter !== 'All'
               ? 'No trip matches your search or filter parameters.'
-              : 'Add your first trip to start managing passenger bookings and driver assignments.'}
-          </p>
-          {isAdmin && !search && statusFilter === 'All' && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-primary-600 transition-colors cursor-pointer"
-            >
-              <Plus size={15} /> Add Trip
-            </button>
-          )}
-        </div>
+              : 'Add your first trip to start managing passenger bookings and driver assignments.'
+          }
+          actionLabel={isAdmin && !search && statusFilter === 'All' ? 'Add Trip' : undefined}
+          onAction={isAdmin && !search && statusFilter === 'All' ? () => setShowAddModal(true) : undefined}
+          actionIcon={Plus}
+        />
       ) : (
         <>
           {/* DESKTOP TABLE VIEW */}

@@ -5,18 +5,26 @@
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-bg text-ink font-sans antialiased selection:bg-accent-100 selection:text-accent-700;
   }
   * {
     scrollbar-width: thin;
     scrollbar-color: #CBD5E1 transparent;
   }
   *::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   *::-webkit-scrollbar-thumb {
     background-color: #CBD5E1;
     border-radius: 999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: #94A3B8;
   }
   :focus-visible {
     outline: 2px solid #2563EB;
@@ -31,8 +39,28 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.01em;
   }
-  /* Signature motif: a dashed "route line" — used sparingly to tie the
-     transport/logistics subject matter to the visual language. */
+
+  /* Safe area inset helper for iOS bottom navigation */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Standardized Page Wrapper */
+  .page-container {
+    @apply mx-auto max-w-[1440px] w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-24 md:pb-8 space-y-5 lg:space-y-6 animate-fadeIn;
+  }
+
+  /* Card Surface Utility */
+  .card-surface {
+    @apply rounded-2xl border border-line bg-surface p-4 sm:p-5 shadow-xs transition-all duration-150;
+  }
+
+  /* Form Input Utility */
+  .form-input {
+    @apply w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-xs sm:text-sm text-ink outline-none transition-all duration-150 focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50 placeholder:text-ink-soft/70;
+  }
+
+  /* Signature motif: a dashed "route line" */
   .route-line {
     background-image: repeating-linear-gradient(
       to bottom,

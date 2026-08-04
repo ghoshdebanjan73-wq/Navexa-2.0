@@ -5,6 +5,7 @@ import {
 import { performGlobalSearch } from '../data/searchStore'
 import { liveCustomers } from '../data/customerStore'
 import { liveTrips } from '../data/tripStore'
+import EmptyState from '../components/ui/EmptyState'
 import { useRouter } from '../context/RouterContext'
 import { useUser } from '../context/UserContext'
 import CustomerDetailPanel from '../components/customers/CustomerDetailPanel'
@@ -38,7 +39,7 @@ export default function SearchResultsPage() {
   const isStaff = user?.role === 'Staff'
 
   return (
-    <div className="mx-auto max-w-[1440px] w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-20 md:pb-8 space-y-6">
+    <div className="page-container">
       
       {/* Search Header Bar */}
       <div className="flex flex-col gap-4 border-b border-line pb-4">
@@ -86,10 +87,11 @@ export default function SearchResultsPage() {
 
       {/* Main Results Body */}
       {results.totalCount === 0 ? (
-        <div className="rounded-2xl border border-line bg-surface p-12 text-center text-xs text-ink-soft space-y-2">
-          <p className="text-base font-extrabold text-ink">No matching results found</p>
-          <p className="max-w-md mx-auto">Try searching for a different customer name, trip ID, partial vehicle registration number, or invoice number.</p>
-        </div>
+        <EmptyState
+          icon={Search}
+          title="No matching results found"
+          description="Try searching for a different customer name, trip ID, partial vehicle registration number, or invoice number."
+        />
       ) : (
         <div className="space-y-6">
           

@@ -13,6 +13,8 @@ import AddVehicleModal from '../components/vehicles/AddVehicleModal'
 import EditVehicleModal from '../components/vehicles/EditVehicleModal'
 import VehicleDetailPanel from '../components/vehicles/VehicleDetailPanel'
 import ConfirmDialog from '../components/trips/ConfirmDialog'
+import EmptyState from '../components/ui/EmptyState'
+import StatusBadge from '../components/ui/StatusBadge'
 
 // Status Badge Styles
 const STATUS_STYLES = {
@@ -194,7 +196,7 @@ export default function VehiclesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+    <div className="page-container">
       
       {/* Toast Notification */}
       {toast && (
@@ -342,25 +344,18 @@ export default function VehiclesPage() {
 
       {/* Vehicle Content Views */}
       {filteredVehicles.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-surface p-12 text-center space-y-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary">
-            <Car size={24} />
-          </div>
-          <h3 className="text-sm font-bold text-ink">No vehicles found</h3>
-          <p className="text-xs text-ink-soft max-w-sm">
-            {search || statusTab !== 'All' || typeFilter !== 'All'
+        <EmptyState
+          icon={Car}
+          title="No vehicles found"
+          description={
+            search || statusTab !== 'All' || typeFilter !== 'All'
               ? 'No vehicle matches your filter criteria.'
-              : 'Add your transport vehicles to start logging trips, documents, and maintenance schedules.'}
-          </p>
-          {isAdmin && !search && statusTab === 'All' && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-primary-600 transition-colors cursor-pointer"
-            >
-              <Plus size={15} /> Add Vehicle
-            </button>
-          )}
-        </div>
+              : 'Add your transport vehicles to start logging trips, documents, and maintenance schedules.'
+          }
+          actionLabel={isAdmin && !search && statusTab === 'All' ? 'Add Vehicle' : undefined}
+          onAction={isAdmin && !search && statusTab === 'All' ? () => setShowAddModal(true) : undefined}
+          actionIcon={Plus}
+        />
       ) : (
         <>
           {/* DESKTOP TABLE VIEW */}

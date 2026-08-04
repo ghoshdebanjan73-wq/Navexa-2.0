@@ -54,7 +54,7 @@ export default function Dashboard({ onNavigate }) {
   }
 
   return (
-    <div className="relative mx-auto max-w-[1440px] w-full space-y-5 lg:space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-20 md:pb-8">
+    <div className="page-container relative">
       {/* Success Toast Notification Banner */}
       {toastMessage && (
         <div className="fixed top-16 right-4 z-50 flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs sm:text-sm font-bold text-emerald-800 shadow-lg animate-slideDown">

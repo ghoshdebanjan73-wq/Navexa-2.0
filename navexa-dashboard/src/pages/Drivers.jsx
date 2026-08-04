@@ -11,6 +11,8 @@ import AddDriverModal from '../components/drivers/AddDriverModal'
 import EditDriverModal from '../components/drivers/EditDriverModal'
 import DriverDetailPanel from '../components/drivers/DriverDetailPanel'
 import ConfirmDialog from '../components/trips/ConfirmDialog'
+import EmptyState from '../components/ui/EmptyState'
+import StatusBadge from '../components/ui/StatusBadge'
 
 export default function DriversPage() {
   const { user } = useUser()
@@ -79,7 +81,7 @@ export default function DriversPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+    <div className="page-container">
       
       {/* Toast Alert */}
       {toast && (
@@ -210,25 +212,18 @@ export default function DriversPage() {
 
       {/* Driver List Content */}
       {filteredDrivers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-surface p-12 text-center space-y-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary">
-            <UserCheck size={24} />
-          </div>
-          <h3 className="text-sm font-bold text-ink">No drivers found</h3>
-          <p className="text-xs text-ink-soft max-w-sm">
-            {search || statusFilter !== 'All'
+        <EmptyState
+          icon={UserCheck}
+          title="No drivers found"
+          description={
+            search || statusFilter !== 'All'
               ? 'No driver matches your search or filter options.'
-              : 'Start by adding your first driver to assign vehicles and manage licenses.'}
-          </p>
-          {isAdmin && !search && statusFilter === 'All' && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-primary-600 transition-colors cursor-pointer"
-            >
-              <Plus size={15} /> Add Driver
-            </button>
-          )}
-        </div>
+              : 'Add your first driver profile to assign trips and manage driver licenses.'
+          }
+          actionLabel={isAdmin && !search && statusFilter === 'All' ? 'Add Driver' : undefined}
+          onAction={isAdmin && !search && statusFilter === 'All' ? () => setShowAddModal(true) : undefined}
+          actionIcon={Plus}
+        />
       ) : (
         <>
           {/* DESKTOP TABLE VIEW */}

@@ -58,7 +58,7 @@ export default function BottomNav() {
       {/* 📱 Mobile Fixed Bottom Navigation Bar */}
       <nav
         aria-label="Mobile bottom navigation"
-        className="md:hidden fixed inset-x-0 bottom-0 z-40 flex h-14 items-stretch justify-around border-t border-line bg-surface/95 px-1 backdrop-blur-md shadow-lg"
+        className="md:hidden fixed inset-x-0 bottom-0 z-40 flex min-h-[56px] items-stretch justify-around border-t border-line bg-surface/95 px-1 pb-safe backdrop-blur-md shadow-lg"
       >
         {/* 1. Dashboard */}
         <button

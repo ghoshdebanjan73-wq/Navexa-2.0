@@ -20,6 +20,7 @@ import { liveInvoices, subscribeInvoices } from '../data/invoiceStore'
 import { liveVehicles } from '../data/vehicleStore'
 import { formatINR } from '../data/tripStore'
 import { useUser } from '../context/UserContext'
+import EmptyState from '../components/ui/EmptyState'
 
 export default function FinancePage() {
   const { user } = useUser()
@@ -108,7 +109,7 @@ export default function FinancePage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1440px] w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-20 md:pb-8 space-y-6">
+    <div className="page-container">
       
       {/* Toast Alert */}
       {toast && (
@@ -298,13 +299,11 @@ export default function FinancePage() {
 
           {/* DESKTOP TABLE VIEW */}
           {filteredTransactions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-surface p-12 text-center space-y-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
-                <Wallet size={24} />
-              </div>
-              <h3 className="text-sm font-bold text-ink">No transactions found</h3>
-              <p className="text-xs text-ink-soft max-w-sm">No transaction matches your search or filter criteria.</p>
-            </div>
+            <EmptyState
+              icon={Wallet}
+              title="No transactions found"
+              description="No financial transaction matches your search or filter criteria."
+            />
           ) : (
             <>
               <div className="hidden md:block overflow-hidden rounded-2xl border border-line bg-surface shadow-xs">

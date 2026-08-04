@@ -294,12 +294,26 @@ export default function TopNav({ pageTitle = 'Dashboard' }) {
                 </div>
 
                 <div className="py-1">
-                  <button className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-ink transition-colors hover:bg-slate-50">
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false)
+                      navigate('Profile')
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-ink transition-colors hover:bg-slate-50 cursor-pointer"
+                  >
                     <User size={15} className="text-ink-soft" /> Profile
                   </button>
-                  <button className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-ink transition-colors hover:bg-slate-50">
-                    <Settings size={15} className="text-ink-soft" /> Settings
-                  </button>
+                  {!isStaff && (
+                    <button
+                      onClick={() => {
+                        setProfileOpen(false)
+                        navigate('Settings')
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-ink transition-colors hover:bg-slate-50 cursor-pointer"
+                    >
+                      <Settings size={15} className="text-ink-soft" /> Settings
+                    </button>
+                  )}
                 </div>
 
                 <div className="border-t border-line pt-1">

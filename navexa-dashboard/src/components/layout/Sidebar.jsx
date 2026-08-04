@@ -102,18 +102,21 @@ export default function Sidebar({ activeRoute: propActiveRoute, onNavigate }) {
                 <button
                   key={id}
                   onClick={() => handleNavClick(id)}
-                  className={`group relative flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors duration-150 ${
+                  className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-150 cursor-pointer ${
                     isActive
-                      ? 'bg-primary-50 text-primary font-bold'
-                      : 'text-ink-soft hover:bg-slate-100 hover:text-ink'
+                      ? 'bg-primary-50 text-primary font-bold shadow-2xs'
+                      : 'text-ink-soft hover:bg-slate-100/80 hover:text-ink'
                   }`}
                   title={collapsed ? label : undefined}
                 >
+                  {isActive && (
+                    <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-primary" />
+                  )}
                   <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
                   {!collapsed && <span className="truncate">{label}</span>}
 
                   {collapsed && (
-                    <div className="absolute left-full ml-2 hidden rounded-md bg-ink px-2 py-1 text-[11px] font-semibold text-white shadow-md group-hover:block z-50 whitespace-nowrap">
+                    <div className="absolute left-full ml-2.5 hidden rounded-lg bg-ink px-2.5 py-1 text-[11px] font-semibold text-white shadow-md group-hover:block z-50 whitespace-nowrap animate-fadeIn">
                       {label}
                     </div>
                   )}
@@ -127,7 +130,7 @@ export default function Sidebar({ activeRoute: propActiveRoute, onNavigate }) {
         {managementNav.length > 0 && (
           <div>
             {!collapsed && (
-              <p className="px-2.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-ink-soft/80">
+              <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-ink-soft/70">
                 Management
               </p>
             )}
@@ -138,18 +141,21 @@ export default function Sidebar({ activeRoute: propActiveRoute, onNavigate }) {
                   <button
                     key={id}
                     onClick={() => handleNavClick(id)}
-                    className={`group relative flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors duration-150 ${
+                    className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-150 cursor-pointer ${
                       isActive
-                        ? 'bg-primary-50 text-primary font-bold'
-                        : 'text-ink-soft hover:bg-slate-100 hover:text-ink'
+                        ? 'bg-primary-50 text-primary font-bold shadow-2xs'
+                        : 'text-ink-soft hover:bg-slate-100/80 hover:text-ink'
                     }`}
                     title={collapsed ? label : undefined}
                   >
+                    {isActive && (
+                      <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-primary" />
+                    )}
                     <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
                     {!collapsed && <span className="truncate">{label}</span>}
 
                     {collapsed && (
-                      <div className="absolute left-full ml-2 hidden rounded-md bg-ink px-2 py-1 text-[11px] font-semibold text-white shadow-md group-hover:block z-50 whitespace-nowrap">
+                      <div className="absolute left-full ml-2.5 hidden rounded-lg bg-ink px-2.5 py-1 text-[11px] font-semibold text-white shadow-md group-hover:block z-50 whitespace-nowrap animate-fadeIn">
                         {label}
                       </div>
                     )}
@@ -167,18 +173,21 @@ export default function Sidebar({ activeRoute: propActiveRoute, onNavigate }) {
         {!isStaff && (
           <button
             onClick={() => handleNavClick('Settings')}
-            className={`group relative flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors duration-150 ${
+            className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-150 cursor-pointer ${
               activeRoute === 'Settings'
-                ? 'bg-primary-50 text-primary font-bold'
-                : 'text-ink-soft hover:bg-slate-100 hover:text-ink'
+                ? 'bg-primary-50 text-primary font-bold shadow-2xs'
+                : 'text-ink-soft hover:bg-slate-100/80 hover:text-ink'
             }`}
             title={collapsed ? 'Settings' : undefined}
           >
+            {activeRoute === 'Settings' && (
+              <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-primary" />
+            )}
             <Settings size={18} strokeWidth={activeRoute === 'Settings' ? 2.5 : 2} className="shrink-0" />
             {!collapsed && <span className="truncate">Settings</span>}
 
             {collapsed && (
-              <div className="absolute left-full ml-2 hidden rounded-md bg-ink px-2 py-1 text-[11px] font-semibold text-white shadow-md group-hover:block z-50 whitespace-nowrap">
+              <div className="absolute left-full ml-2.5 hidden rounded-lg bg-ink px-2.5 py-1 text-[11px] font-semibold text-white shadow-md group-hover:block z-50 whitespace-nowrap animate-fadeIn">
                 Settings
               </div>
             )}
@@ -188,23 +197,28 @@ export default function Sidebar({ activeRoute: propActiveRoute, onNavigate }) {
         {/* Dynamic Profile Footer Card */}
         <button
           onClick={() => handleNavClick('Profile')}
-          className={`group relative flex w-full items-center gap-2.5 rounded-lg p-1.5 transition-colors ${
-            activeRoute === 'Profile' ? 'bg-primary-50' : 'hover:bg-slate-100'
+          className={`group relative flex w-full items-center gap-2.5 rounded-xl p-2 transition-all cursor-pointer ${
+            activeRoute === 'Profile' ? 'bg-primary-50 text-primary font-bold' : 'hover:bg-slate-100/80'
           }`}
           title={collapsed ? `Profile (${user?.name || 'User'})` : undefined}
         >
-          <div className="flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white shadow-xs">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white shadow-xs">
             {initials}
           </div>
           {!collapsed && (
-            <div className="min-w-0 text-left">
-              <p className="truncate text-xs font-bold text-ink leading-tight">{user?.name || 'User'}</p>
+            <div className="min-w-0 text-left flex-1">
+              <div className="flex items-center justify-between gap-1">
+                <p className="truncate text-xs font-bold text-ink leading-tight">{user?.name || 'User'}</p>
+                <span className="rounded-md bg-slate-100 px-1 py-0.2 text-[9px] font-extrabold text-ink-soft shrink-0">
+                  {user?.role || 'Admin'}
+                </span>
+              </div>
               <p className="truncate text-[10px] font-medium text-ink-soft">{user?.email || 'user@navexa.io'}</p>
             </div>
           )}
 
           {collapsed && (
-            <div className="absolute left-full ml-2 hidden rounded-md bg-ink px-2 py-1 text-[11px] font-semibold text-white shadow-md group-hover:block z-50 whitespace-nowrap">
+            <div className="absolute left-full ml-2.5 hidden rounded-lg bg-ink px-2.5 py-1 text-[11px] font-semibold text-white shadow-md group-hover:block z-50 whitespace-nowrap animate-fadeIn">
               Profile
             </div>
           )}

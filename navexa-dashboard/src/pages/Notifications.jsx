@@ -11,6 +11,7 @@ import { liveTrips } from '../data/tripStore'
 import { useRouter } from '../context/RouterContext'
 import { useUser } from '../context/UserContext'
 import TripDetailPanel from '../components/trips/TripDetailPanel'
+import EmptyState from '../components/ui/EmptyState'
 
 export default function NotificationsPage() {
   const { user } = useUser()
@@ -69,7 +70,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1440px] w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-20 md:pb-8 space-y-6">
+    <div className="page-container">
       
       {/* Page Header & Action Controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-line pb-4">
@@ -127,13 +128,12 @@ export default function NotificationsPage() {
       {/* Main Notifications List */}
       <div className="rounded-2xl border border-line bg-surface shadow-xs overflow-hidden">
         {filteredNotifs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center space-y-2">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-              <CheckCircle2 size={24} />
-            </div>
-            <h3 className="text-sm font-extrabold text-ink">You're all caught up! 🎉</h3>
-            <p className="text-xs text-ink-soft max-w-sm">No notifications found for the selected filter tab right now.</p>
-          </div>
+          <EmptyState
+            icon={CheckCircle2}
+            title="You're all caught up! 🎉"
+            description="No notifications found for the selected filter tab right now."
+            className="border-0 bg-transparent py-16"
+          />
         ) : (
           <div className="divide-y divide-line">
             {filteredNotifs.map(n => {

@@ -68,7 +68,7 @@ export default function ReportsPage() {
     : dateRange
 
   return (
-    <div className="mx-auto max-w-[1440px] w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-20 md:pb-8 space-y-6">
+    <div className="page-container">
       
       {/* Top Header & Global Date Range Bar */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-line pb-4">

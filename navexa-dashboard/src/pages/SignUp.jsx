@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Eye, EyeOff, Loader2, Mail, CheckCircle2, ChevronLeft } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Mail, CheckCircle2, ChevronLeft, Route } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useRouter } from '../context/RouterContext'
 
@@ -76,11 +76,9 @@ export default function SignUpPage() {
         }
         setIsSubmitting(false)
       } else if (data?.session) {
-        // Auto-signed in by Supabase Auth without requiring email confirmation
         setIsSubmitting(false)
         navigate('Dashboard')
       } else {
-        // Email confirmation is required by Supabase Auth, show the check-email layout
         setIsSuccess(true)
         setIsSubmitting(false)
       }
@@ -99,21 +97,18 @@ export default function SignUpPage() {
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mx-auto">
             <Mail size={24} strokeWidth={2} />
           </div>
-          <div className="space-y-2">
-            <h3 className="text-2xl font-extrabold text-ink">Check your email</h3>
-            <p className="text-xs sm:text-sm text-ink-soft leading-relaxed">
-              We sent a verification link to <strong className="text-ink font-semibold">{email}</strong>. Verify your email to activate your Navexa account.
+          <div>
+            <h3 className="text-xl font-bold text-ink">Check your email</h3>
+            <p className="mt-2 text-xs sm:text-sm text-ink-soft leading-relaxed">
+              We sent a confirmation link to <span className="font-semibold text-ink">{email}</span>. Please click the link to confirm your email and sign in.
             </p>
           </div>
-          <div className="pt-2">
-            <button
-              onClick={() => navigate('SignIn')}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary text-white py-2.5 px-4 text-xs sm:text-sm font-bold shadow-xs hover:bg-primary-600 active:scale-[0.98] transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <ChevronLeft size={16} />
-              <span>Back to Sign In</span>
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('SignIn')}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-primary-600 transition-colors cursor-pointer"
+          >
+            <ChevronLeft size={16} /> Return to Sign In
+          </button>
         </div>
       </div>
     )
@@ -124,14 +119,22 @@ export default function SignUpPage() {
       <div className="w-full max-w-md space-y-8 rounded-2xl border border-line bg-surface p-6 shadow-pop sm:p-8 animate-fadeUp">
         {/* Branding & Header */}
         <div className="text-center">
-          <h2 className="text-3xl font-extrabold tracking-tight text-primary">
+          <div className="flex justify-center mb-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-white shadow-sm">
+              <Route size={22} strokeWidth={2.5} />
+            </div>
+          </div>
+          <h2 className="text-2xl font-extrabold tracking-tight text-ink">
             Navexa
           </h2>
-          <h3 className="mt-4 text-xl font-bold text-ink">
+          <p className="mt-0.5 text-xs font-semibold text-ink-soft">
+            Transport & Fleet Management
+          </p>
+          <h3 className="mt-5 text-base font-bold text-ink">
             Create your account
           </h3>
-          <p className="mt-1.5 text-xs sm:text-sm text-ink-soft">
-            Set up your account to start managing your business.
+          <p className="mt-1 text-xs text-ink-soft">
+            Set up your account to start managing your business
           </p>
         </div>
 

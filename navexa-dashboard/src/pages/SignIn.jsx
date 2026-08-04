@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Route } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useRouter } from '../context/RouterContext'
 
@@ -72,14 +72,22 @@ export default function SignInPage() {
       <div className="w-full max-w-md space-y-8 rounded-2xl border border-line bg-surface p-6 shadow-pop sm:p-8 animate-fadeUp">
         {/* Branding & Welcome */}
         <div className="text-center">
-          <h2 className="text-3xl font-extrabold tracking-tight text-primary">
+          <div className="flex justify-center mb-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-white shadow-sm">
+              <Route size={22} strokeWidth={2.5} />
+            </div>
+          </div>
+          <h2 className="text-2xl font-extrabold tracking-tight text-ink">
             Navexa
           </h2>
-          <h3 className="mt-4 text-xl font-bold text-ink">
+          <p className="mt-0.5 text-xs font-semibold text-ink-soft">
+            Transport & Fleet Management
+          </p>
+          <h3 className="mt-5 text-base font-bold text-ink">
             Welcome back
           </h3>
-          <p className="mt-1.5 text-xs sm:text-sm text-ink-soft">
-            Sign in to manage your business.
+          <p className="mt-1 text-xs text-ink-soft">
+            Sign in to manage your business operations
           </p>
         </div>
 
