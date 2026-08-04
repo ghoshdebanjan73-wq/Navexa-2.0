@@ -312,9 +312,20 @@ export async function deleteTransaction(id) {
 }
 
 /**
- * Filter & Search Transactions
+/**
+ * Filter & Search Transactions with support for exact Date Bounds
  */
-export function filterAndSortTransactions(list, { search = '', type = 'All', category = 'All', paymentMethod = 'All', vehicleId = 'All', dateRange = 'All', sortBy = 'Newest' }) {
+export function filterAndSortTransactions(list, {
+  search = '',
+  type = 'All',
+  category = 'All',
+  paymentMethod = 'All',
+  vehicleId = 'All',
+  startDate = null,
+  endDate = null,
+  dateRange = 'All',
+  sortBy = 'Newest'
+}) {
   let result = [...list]
 
   if (type !== 'All') {
@@ -333,45 +344,147 @@ export function filterAndSortTransactions(list, { search = '', type = 'All', cat
     result = result.filter(t => t.vehicleId === vehicleId)
   }
 
-  // Date Range Filtering
-  if (dateRange !== 'All') {
+  // Exact Start/End Date Bounds Filtering
+  if (startDate || endDate) {
+    result = result.filter(t => {
+      if (!t.date) return false
+      const tDate = new Date(t.date)
+      if (isNaN(tDate.getTime())) return false
+      if (startDate && tDate < startDate) return false
+      if (endDate && tDate > endDate) return false
+      return true
+    })
+  } else if (dateRange !== 'All' && dateRange !== 'Custom') {
     const now = new Date()
     let cutoff = new Date()
-
-    if (dateRange === '7D') cutoff.setDate(now.getDate() - 7)
-    else if (dateRange === '30D') cutoff.setDate(now.getDate() - 30)
+    if (dateRange === '7D' || dateRange === 'This Week') cutoff.setDate(now.getDate() - 7)
+    else if (dateRange === '30D' || dateRange === 'This Month') cutoff.setDate(now.getDate() - 30)
     else if (dateRange === '3M') cutoff.setMonth(now.getMonth() - 3)
     else if (dateRange === '6M') cutoff.setMonth(now.getMonth() - 6)
-    else if (dateRange === '1Y') cutoff.setFullYear(now.getFullYear() - 1)
-
+    else if (dateRange === '1Y' || dateRange === 'This Year') cutoff.setFullYear(now.getFullYear() - 1)
     result = result.filter(t => new Date(t.date) >= cutoff)
   }
 
-  // Instant Search
+  // Multi-Field Search (Customer, Invoice #, Trip ID, Vehicle, Category, Payment Method, Reference, Vendor)
   if (search && search.trim()) {
     const q = search.trim().toLowerCase()
     result = result.filter(t => {
-      const haystack = `${t.description} ${t.category} ${t.reference || ''} ${t.invoiceId || ''} ${t.tripId || ''} ${t.vendor || ''}`.toLowerCase()
+      const haystack = `${t.description || ''} ${t.category || ''} ${t.reference || ''} ${t.invoiceId || ''} ${t.tripId || ''} ${t.vehicleId || ''} ${t.vendor || ''} ${t.paymentMethod || ''}`.toLowerCase()
       return haystack.includes(q)
     })
   }
 
-  // Sort
+  // Sort (Newest first by default)
   if (sortBy === 'Oldest') {
-    result.sort((a, b) => new Date(a.date) - new Date(b.date))
+    result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0))
   } else if (sortBy === 'Highest Amount') {
     result.sort((a, b) => b.amount - a.amount)
   } else if (sortBy === 'Lowest Amount') {
     result.sort((a, b) => a.amount - b.amount)
   } else {
-    result.sort((a, b) => new Date(b.date) - new Date(a.date))
+    result.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
   }
 
   return result
 }
 
 /**
- * Derived Finance Summary Metrics
+ * Filtered Financial Summary Calculator
+ * Computes exact totals, receivables, expense breakdowns, and daily averages for selected date range bounds.
+ */
+export function computeFilteredFinancialSummary(transactions = [], invoices = [], trips = [], dateBounds = {}) {
+  const { startDate, endDate, label = 'Selected Period', daysCount = 1 } = dateBounds
+
+  // Filter transactions within date bounds
+  const periodTxns = transactions.filter(t => {
+    if (!startDate && !endDate) return true
+    if (!t.date) return false
+    const d = new Date(t.date)
+    if (isNaN(d.getTime())) return false
+    if (startDate && d < startDate) return false
+    if (endDate && d > endDate) return false
+    return true
+  })
+
+  // Filter trips within date bounds
+  const periodTrips = trips.filter(t => {
+    if (!startDate && !endDate) return true
+    if (!t.tripDate) return true
+    const d = new Date(t.tripDate)
+    if (isNaN(d.getTime())) return true
+    if (startDate && d < startDate) return false
+    if (endDate && d > endDate) return false
+    return true
+  })
+
+  // Filter invoices within date bounds
+  const periodInvoices = invoices.filter(i => {
+    if (!startDate && !endDate) return true
+    const d = new Date(i.issueDate || i.createdAt || Date.now())
+    if (isNaN(d.getTime())) return true
+    if (startDate && d < startDate) return false
+    if (endDate && d > endDate) return false
+    return true
+  })
+
+  // Totals
+  const totalIncome = periodTxns.filter(t => t.type === 'Income').reduce((sum, t) => sum + t.amount, 0)
+  const totalExpenses = periodTxns.filter(t => t.type === 'Expense').reduce((sum, t) => sum + t.amount, 0)
+  const netProfit = totalIncome - totalExpenses
+
+  // Outstanding Payments (Unpaid & Partial Balance Due)
+  const outstandingPayments = periodInvoices
+    .filter(i => i.paymentStatus !== 'Paid' && i.paymentStatus !== 'Cancelled')
+    .reduce((sum, i) => sum + (Number(i.balanceDue) || 0), 0)
+
+  // Expense Category Breakdowns
+  const fuelExpenses = periodTxns
+    .filter(t => t.type === 'Expense' && (t.category === 'Fuel' || (t.description && t.description.toLowerCase().includes('fuel'))))
+    .reduce((sum, t) => sum + t.amount, 0)
+
+  const tollExpenses = periodTxns
+    .filter(t => t.type === 'Expense' && (t.category === 'Toll' || (t.description && t.description.toLowerCase().includes('toll'))))
+    .reduce((sum, t) => sum + t.amount, 0)
+
+  const maintenanceExpenses = periodTxns
+    .filter(t => t.type === 'Expense' && (t.category === 'Vehicle Service' || t.category === 'Vehicle Repair' || t.category === 'Maintenance' || (t.description && t.description.toLowerCase().includes('service'))))
+    .reduce((sum, t) => sum + t.amount, 0)
+
+  const driverExpenses = periodTxns
+    .filter(t => t.type === 'Expense' && (t.category === 'Driver Payment' || (t.description && t.description.toLowerCase().includes('driver'))))
+    .reduce((sum, t) => sum + t.amount, 0)
+
+  const specifiedCatExpenses = fuelExpenses + tollExpenses + maintenanceExpenses + driverExpenses
+  const otherExpenses = Math.max(0, totalExpenses - specifiedCatExpenses)
+
+  // Daily Averages
+  const safeDays = Math.max(1, daysCount)
+  const avgDailyIncome = Math.round(totalIncome / safeDays)
+  const avgDailyExpense = Math.round(totalExpenses / safeDays)
+  const avgDailyProfit = Math.round(netProfit / safeDays)
+
+  return {
+    totalIncome,
+    totalExpenses,
+    netProfit,
+    outstandingPayments,
+    totalTrips: periodTrips.length,
+    fuelExpenses,
+    tollExpenses,
+    maintenanceExpenses,
+    driverExpenses,
+    otherExpenses,
+    periodLabel: label,
+    totalDays: safeDays,
+    avgDailyIncome,
+    avgDailyExpense,
+    avgDailyProfit,
+    filteredTxnList: periodTxns,
+  }
+}
+
+/**
+ * Derived Finance Summary Metrics (Default Global Summary)
  */
 export function computeSummary() {
   const totalIncome = liveTransactions.filter(t => t.type === 'Income').reduce((sum, t) => sum + t.amount, 0)
@@ -382,21 +495,6 @@ export function computeSummary() {
   const paidInvoiceRevenue = liveInvoices.filter(i => i.paymentStatus === 'Paid').reduce((sum, i) => sum + i.totalAmount, 0)
   const pendingInvoiceAmount = liveInvoices.filter(i => i.paymentStatus !== 'Paid' && i.paymentStatus !== 'Cancelled').reduce((sum, i) => sum + i.balanceDue, 0)
 
-  // Current Month Calculations
-  const now = new Date()
-  const currentMonth = now.getMonth()
-  const currentYear = now.getFullYear()
-
-  const thisMonthIncome = liveTransactions
-    .filter(t => t.type === 'Income' && new Date(t.date).getMonth() === currentMonth && new Date(t.date).getFullYear() === currentYear)
-    .reduce((sum, t) => sum + t.amount, 0)
-
-  const thisMonthExpenses = liveTransactions
-    .filter(t => t.type === 'Expense' && new Date(t.date).getMonth() === currentMonth && new Date(t.date).getFullYear() === currentYear)
-    .reduce((sum, t) => sum + t.amount, 0)
-
-  const thisMonthProfit = thisMonthIncome - thisMonthExpenses
-
   return {
     income: { value: totalIncome, delta: 0, direction: 'up', sentiment: 'positive' },
     expenses: { value: totalExpenses, delta: 0, direction: 'up', sentiment: 'warning' },
@@ -404,9 +502,6 @@ export function computeSummary() {
     outstandingReceivables: pendingInvoiceAmount,
     paidInvoiceRevenue,
     pendingInvoiceAmount,
-    thisMonthIncome,
-    thisMonthExpenses,
-    thisMonthProfit,
   }
 }
 
