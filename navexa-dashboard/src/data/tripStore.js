@@ -39,11 +39,12 @@ export function getUpcomingForDashboard() {
 
 export function getTripCounts() {
   const total = liveTrips.length
-  const upcoming = liveTrips.filter(t => t.status === 'Booked' || t.status === 'Confirmed' || t.status === 'Driver Assigned').length
-  const ongoing = liveTrips.filter(t => t.status === 'Started' || t.status === 'Passenger Picked Up' || t.status === 'Vehicle Assigned').length
+  const booked = liveTrips.filter(t => t.status === 'Booked' || t.status === 'Confirmed' || t.status === 'Driver Assigned').length
+  const active = liveTrips.filter(t => t.status === 'Started' || t.status === 'Passenger Picked Up' || t.status === 'Vehicle Assigned').length
   const completed = liveTrips.filter(t => t.status === 'Completed').length
+  const cancelled = liveTrips.filter(t => t.status === 'Cancelled').length
 
-  return { total, upcoming, ongoing, completed }
+  return { total, booked, active, completed, cancelled }
 }
 
 /** Safe load trips from localStorage */
@@ -392,12 +393,22 @@ export async function addTrip(record, userId) {
   return newTrip
 }
 
-export async function updateTripStatus(id, newStatus, actualFare = null) {
+/** Check if a trip is in a finalized read-only state */
+export function isTripFinalized(trip) {
+  if (!trip) return false
+  return trip.status === 'Completed' || trip.status === 'Cancelled'
+}
+
+export async function updateTripStatus(id, newStatus, actualFare = null, userName = 'Dispatcher') {
   const idx = liveTrips.findIndex(t => t.id === id)
   if (idx === -1) throw new Error('Trip not found')
 
-  const now = new Date().toISOString()
   const trip = liveTrips[idx]
+  if (isTripFinalized(trip)) {
+    throw new Error('This trip has been finalized and can no longer be edited.')
+  }
+
+  const now = new Date().toISOString()
 
   const updatedTimeline = [
     ...(trip.timeline || []),
@@ -405,7 +416,7 @@ export async function updateTripStatus(id, newStatus, actualFare = null) {
       status: newStatus,
       label: `Trip ${newStatus}`,
       timestamp: now,
-      performedBy: 'Dispatcher',
+      performedBy: userName,
     }
   ]
 
@@ -423,9 +434,30 @@ export async function updateTripStatus(id, newStatus, actualFare = null) {
     id: Date.now(),
     type: 'trip',
     text: `Trip ${id} status updated to ${newStatus}`,
-    performedBy: 'Dispatcher',
+    performedBy: userName,
     time: 'Just now',
   })
+
+  // Log Audit Event for Finalized status changes
+  if (newStatus === 'Completed') {
+    logAuditEvent({
+      action: 'STATUS_CHANGE',
+      entityType: 'Trip',
+      entityId: id,
+      entityLabel: `Trip #${id}`,
+      description: `Trip #${id} for ${trip.customer} completed. Record locked as Finalized Record.`,
+      metadata: { auditTag: 'Trip Completed' },
+    })
+  } else if (newStatus === 'Cancelled') {
+    logAuditEvent({
+      action: 'STATUS_CHANGE',
+      entityType: 'Trip',
+      entityId: id,
+      entityLabel: `Trip #${id}`,
+      description: `Trip #${id} for ${trip.customer} cancelled. Record locked as Finalized Record.`,
+      metadata: { auditTag: 'Trip Cancelled' },
+    })
+  }
 
   notify()
 
@@ -448,9 +480,22 @@ export async function updateTripStatus(id, newStatus, actualFare = null) {
   return updated
 }
 
-export async function editTrip(id, updates) {
+export async function editTrip(id, updates, userName = 'Dispatcher') {
   const idx = liveTrips.findIndex(t => t.id === id)
   if (idx === -1) throw new Error('Trip not found')
+
+  const target = liveTrips[idx]
+  if (isTripFinalized(target)) {
+    logAuditEvent({
+      action: 'UPDATE',
+      entityType: 'Trip',
+      entityId: target.id,
+      entityLabel: `Trip #${target.id}`,
+      description: `Attempted edit on locked trip #${target.id} (${target.status}). Action rejected.`,
+      metadata: { auditTag: 'Attempted Edit On Locked Trip', status: target.status },
+    })
+    throw new Error('This trip has been finalized and can no longer be edited.')
+  }
 
   // Conflict Check
   const conflictErr = checkTripConflicts({
@@ -476,7 +521,7 @@ export async function editTrip(id, updates) {
     id: Date.now(),
     type: 'trip',
     text: `Trip ${id} details updated`,
-    performedBy: 'Dispatcher',
+    performedBy: userName,
     time: 'Just now',
   })
 

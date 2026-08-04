@@ -6,7 +6,7 @@ import {
 import { useUser } from '../context/UserContext'
 import {
   liveTrips, subscribeTrips, filterAndSortTrips, getNextTripStatus,
-  updateTripStatus, deleteTrip, formatINR, TRIP_STAGES
+  updateTripStatus, deleteTrip, formatINR, TRIP_STAGES, isTripFinalized
 } from '../data/tripStore'
 import { liveDrivers, subscribeDrivers } from '../data/driverStore'
 import { liveVehicles, subscribeVehicles } from '../data/vehicleStore'
@@ -358,7 +358,8 @@ export default function TripsPage() {
               </thead>
               <tbody className="divide-y divide-line font-medium text-ink">
                 {filteredTrips.map((trip) => {
-                  const nextAction = getNextTripStatus(trip.status)
+                  const isFinalized = isTripFinalized(trip)
+                  const nextAction = !isFinalized ? getNextTripStatus(trip.status) : null
                   const stageStyle = STAGE_COLORS[trip.status] || STAGE_COLORS.Booked
 
                   return (
@@ -367,15 +368,15 @@ export default function TripsPage() {
                       onClick={() => setViewingTrip(trip)}
                       className="hover:bg-slate-50/80 transition-colors cursor-pointer"
                     >
-                      {/* Trip ID & Customer */}
+                      {/* Customer & Trip ID */}
                       <td className="px-4 py-3.5">
                         <p className="font-extrabold text-ink">{trip.customer}</p>
                         <p className="text-[10px] text-ink-soft num font-bold">{trip.id}</p>
                       </td>
 
                       {/* Route */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-ink">
+                      <td className="px-4 py-3.5 text-xs">
+                        <div className="flex items-center gap-1.5 font-bold text-ink">
                           <span>{trip.pickupLocation}</span>
                           <ArrowRight size={12} className="text-ink-soft shrink-0" />
                           <span>{trip.destination}</span>
@@ -405,11 +406,6 @@ export default function TripsPage() {
                       {/* Fare */}
                       <td className="px-4 py-3.5">
                         <p className="font-extrabold text-ink num">{formatINR(trip.fare)}</p>
-                        <span className={`inline-flex rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
-                          trip.paymentStatus === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-                        }`}>
-                          {trip.paymentStatus}
-                        </span>
                       </td>
 
                       {/* Workflow Stage */}
@@ -440,23 +436,14 @@ export default function TripsPage() {
                             <Eye size={15} />
                           </button>
 
-                          {isAdmin && (
-                            <>
-                              <button
-                                onClick={() => setEditingTrip(trip)}
-                                className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-soft hover:bg-slate-100 hover:text-primary transition-colors cursor-pointer"
-                                title="Edit Trip"
-                              >
-                                <Edit3 size={15} />
-                              </button>
-                              <button
-                                onClick={() => setDeletingTrip(trip)}
-                                className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-soft hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
-                                title="Delete Trip"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </>
+                          {isAdmin && !isFinalized && (
+                            <button
+                              onClick={() => setEditingTrip(trip)}
+                              className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-soft hover:bg-slate-100 hover:text-primary transition-colors cursor-pointer"
+                              title="Edit Trip"
+                            >
+                              <Edit3 size={15} />
+                            </button>
                           )}
                         </div>
                       </td>
@@ -470,7 +457,8 @@ export default function TripsPage() {
           {/* MOBILE CARD VIEW */}
           <div className="grid grid-cols-1 gap-3 md:hidden">
             {filteredTrips.map((trip) => {
-              const nextAction = getNextTripStatus(trip.status)
+              const isFinalized = isTripFinalized(trip)
+              const nextAction = !isFinalized ? getNextTripStatus(trip.status) : null
               const stageStyle = STAGE_COLORS[trip.status] || STAGE_COLORS.Booked
 
               return (
@@ -530,21 +518,13 @@ export default function TripsPage() {
                         </button>
                       )}
 
-                      {isAdmin && (
-                        <>
-                          <button
-                            onClick={() => setEditingTrip(trip)}
-                            className="rounded-lg border border-line bg-bg px-2.5 py-1 text-xs font-bold text-ink cursor-pointer"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => setDeletingTrip(trip)}
-                            className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 cursor-pointer"
-                          >
-                            Delete
-                          </button>
-                        </>
+                      {isAdmin && !isFinalized && (
+                        <button
+                          onClick={() => setEditingTrip(trip)}
+                          className="rounded-lg border border-line bg-bg px-2.5 py-1 text-xs font-bold text-ink cursor-pointer"
+                        >
+                          Edit
+                        </button>
                       )}
                     </div>
                   </div>

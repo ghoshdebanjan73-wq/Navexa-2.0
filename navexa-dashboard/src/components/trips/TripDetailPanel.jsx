@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import {
   X, Route, User, Car, Calendar, Clock, MapPin, CheckCircle2,
-  AlertCircle, Edit3, Trash2, ArrowRight, Check, Play, Flag, IndianRupee
+  AlertCircle, Edit3, Trash2, ArrowRight, Check, Play, Flag, IndianRupee, Lock, ShieldCheck
 } from 'lucide-react'
-import { getNextTripStatus, updateTripStatus, TRIP_STAGES, formatINR } from '../../data/tripStore'
+import { getNextTripStatus, updateTripStatus, TRIP_STAGES, formatINR, isTripFinalized } from '../../data/tripStore'
 import { liveDrivers } from '../../data/driverStore'
 import { liveVehicles } from '../../data/vehicleStore'
 import { getTripProfitability } from '../../data/transactionStore'
+import StatusBadge from '../ui/StatusBadge'
 import ConfirmDialog from './ConfirmDialog'
 
 export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelete, isAdmin }) {
@@ -16,7 +17,8 @@ export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelet
 
   if (!isOpen || !trip) return null
 
-  const nextAction = getNextTripStatus(trip.status)
+  const isFinalized = isTripFinalized(trip)
+  const nextAction = !isFinalized ? getNextTripStatus(trip.status) : null
 
   // Driver details
   let driverObj = null
@@ -31,7 +33,7 @@ export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelet
   }
 
   const handleStatusProgression = async () => {
-    if (!nextAction || isSubmitting) return
+    if (!nextAction || isSubmitting || isFinalized) return
     setIsSubmitting(true)
     try {
       const actualFareVal = nextAction.next === 'Completed' ? (actualFareInput || trip.fare) : null
@@ -58,8 +60,18 @@ export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelet
               <Route size={20} />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-ink leading-tight">{trip.customer}</h3>
-              <p className="text-xs text-ink-soft num font-extrabold">{trip.id}</p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-extrabold text-ink leading-tight">{trip.customer}</h3>
+                <StatusBadge status={trip.status} size="sm" />
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-xs text-ink-soft num font-extrabold">{trip.id}</p>
+                {isFinalized && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 border border-slate-200">
+                    <Lock size={10} /> Finalized Record
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button
@@ -73,23 +85,41 @@ export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelet
         {/* Content Body */}
         <div className="p-5 space-y-6 flex-1">
           
-          {/* Quick Action Button for Status Progression */}
-          {nextAction && isAdmin && (
-            <div className="rounded-2xl border border-primary/20 bg-primary-50/50 p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-ink">Next Stage Workflow</p>
-                  <p className="text-[11px] text-ink-soft">Current: <strong className="text-primary">{trip.status}</strong></p>
+          {/* Read-Only Finalized Banner for Completed/Cancelled trips */}
+          {isFinalized ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-200 text-slate-700">
+                  <Lock size={16} />
                 </div>
-                <button
-                  onClick={() => setConfirmStatus(nextAction)}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-md hover:bg-primary-600 transition-colors cursor-pointer"
-                >
-                  <span>{nextAction.label}</span>
-                  <ArrowRight size={14} />
-                </button>
+                <div>
+                  <p className="text-xs font-bold text-ink">Trip Finalized ({trip.status})</p>
+                  <p className="text-[11px] text-ink-soft">This record is read-only and locked against editing.</p>
+                </div>
               </div>
+              <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-bold text-slate-700">
+                Finalized Record
+              </span>
             </div>
+          ) : (
+            /* Quick Action Button for Status Progression (Upcoming Trips) */
+            nextAction && isAdmin && (
+              <div className="rounded-2xl border border-primary/20 bg-primary-50/50 p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-ink">Next Stage Workflow</p>
+                    <p className="text-[11px] text-ink-soft">Current: <strong className="text-primary">{trip.status}</strong></p>
+                  </div>
+                  <button
+                    onClick={() => setConfirmStatus(nextAction)}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-md hover:bg-primary-600 transition-colors cursor-pointer"
+                  >
+                    <span>{nextAction.label}</span>
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )
           )}
 
           {/* Route & Timing Card */}
@@ -131,7 +161,7 @@ export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelet
           {/* Fare & Financial Summary */}
           <div className="rounded-2xl border border-line bg-surface p-4 space-y-3 shadow-2xs">
             <h4 className="text-xs font-bold uppercase tracking-wider text-ink-soft border-b border-line pb-2">
-              Fare & Financials
+              Fare & Operational Financials
             </h4>
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
@@ -141,7 +171,7 @@ export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelet
               <div>
                 <p className="text-[10px] font-bold text-ink-soft uppercase">Actual Fare</p>
                 <p className="font-extrabold text-emerald-700 num text-sm mt-0.5">
-                  {trip.actualFare ? formatINR(trip.actualFare) : 'Pending'}
+                  {trip.actualFare ? formatINR(trip.actualFare) : (trip.status === 'Completed' ? formatINR(trip.fare) : 'Pending')}
                 </p>
               </div>
               {trip.estimatedDistance && (
@@ -151,8 +181,8 @@ export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelet
                 </div>
               )}
               <div>
-                <p className="text-[10px] font-bold text-ink-soft uppercase">Payment Status</p>
-                <p className="font-bold text-ink mt-0.5">{trip.paymentStatus || 'Unpaid'}</p>
+                <p className="text-[10px] font-bold text-ink-soft uppercase">Operational State</p>
+                <p className="font-bold text-ink mt-0.5">{trip.status}</p>
               </div>
             </div>
           </div>
@@ -275,20 +305,19 @@ export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelet
 
         {/* Footer Actions */}
         {isAdmin && (
-          <div className="sticky bottom-0 bg-surface border-t border-line p-4 flex items-center gap-3">
-            <button
-              onClick={() => { onClose(); onEdit(trip) }}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary-50 text-primary border border-primary/20 px-4 py-2.5 text-xs font-bold hover:bg-primary-100 transition-colors cursor-pointer"
-            >
-              <Edit3 size={15} /> Edit Trip
-            </button>
-
-            <button
-              onClick={() => { onClose(); onDelete(trip) }}
-              className="flex items-center justify-center gap-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 px-4 py-2.5 text-xs font-bold hover:bg-rose-100 transition-colors cursor-pointer"
-            >
-              <Trash2 size={15} /> Delete
-            </button>
+          <div className="sticky bottom-0 bg-surface border-t border-line p-4 flex items-center justify-between gap-3">
+            {!isFinalized ? (
+              <button
+                onClick={() => { onClose(); onEdit(trip) }}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary-50 text-primary border border-primary/20 px-4 py-2.5 text-xs font-bold hover:bg-primary-100 transition-colors cursor-pointer"
+              >
+                <Edit3 size={15} /> Edit Trip
+              </button>
+            ) : (
+              <div className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 px-4 py-2.5 text-xs font-bold select-none">
+                <Lock size={14} /> Finalized Record (Locked)
+              </div>
+            )}
           </div>
         )}
 

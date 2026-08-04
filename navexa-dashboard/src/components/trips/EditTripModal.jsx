@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
-import { X, Edit2 } from 'lucide-react'
+import { X, Edit2, AlertCircle, Lock } from 'lucide-react'
 import TripForm from './TripForm'
+import { isTripFinalized } from '../../data/tripStore'
 
 export default function EditTripModal({ trip, onClose, onSaved, user }) {
   useEffect(() => {
@@ -8,6 +9,8 @@ export default function EditTripModal({ trip, onClose, onSaved, user }) {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
+
+  const isFinalized = isTripFinalized(trip)
 
   return (
     <div
@@ -40,12 +43,37 @@ export default function EditTripModal({ trip, onClose, onSaved, user }) {
 
         {/* Modal Scrollable Body */}
         <div className="overflow-y-auto p-5 sm:p-6 flex-1">
-          <TripForm
-            tripToEdit={trip}
-            onClose={onClose}
-            onSaved={onSaved}
-            user={user}
-          />
+          {isFinalized ? (
+            <div className="space-y-4 text-center py-6">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+                <Lock size={24} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-base font-extrabold text-ink">Trip Finalized & Locked</h4>
+                <p className="text-xs text-rose-700 font-bold">
+                  This trip has been finalized and can no longer be edited.
+                </p>
+                <p className="text-xs text-ink-soft">
+                  Status: <strong className="text-ink">{trip?.status}</strong> (Finalized Record)
+                </p>
+              </div>
+              <div className="pt-2">
+                <button
+                  onClick={onClose}
+                  className="rounded-xl border border-line bg-surface px-5 py-2 text-xs font-bold text-ink hover:bg-slate-50 cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          ) : (
+            <TripForm
+              tripToEdit={trip}
+              onClose={onClose}
+              onSaved={onSaved}
+              user={user}
+            />
+          )}
         </div>
       </div>
     </div>
