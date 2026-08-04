@@ -24,7 +24,7 @@ export const TRIP_STAGES = [
   'Completed',
 ]
 
-export const PAYMENT_STATUSES = ['Unpaid', 'Paid', 'Partial']
+export const PAYMENT_STATUSES = ['Pending', 'In Progress', 'Paid', 'Cancelled']
 
 export function formatINR(val) {
   if (val === null || val === undefined || isNaN(val)) return '₹0'

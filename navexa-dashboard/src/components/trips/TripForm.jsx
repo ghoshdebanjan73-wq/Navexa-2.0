@@ -3,7 +3,7 @@ import { Plus, Loader2, IndianRupee, Calendar, Clock, Lock, User, AlertCircle } 
 import { useUser } from '../../context/UserContext'
 import { liveVehicles, subscribeVehicles, getEffectiveVehicleStatus } from '../../data/vehicleStore'
 import { liveDrivers, subscribeDrivers } from '../../data/driverStore'
-import { addTrip, editTrip, PAYMENT_STATUSES, formatINR, checkTripConflicts } from '../../data/tripStore'
+import { addTrip, editTrip, formatINR, checkTripConflicts } from '../../data/tripStore'
 import { getCustomerNames, subscribeCustomers, addCustomer, findByPhone, getCustomerByName } from '../../data/customerStore'
 import { getTripAmountPaid } from '../../data/paymentStore'
 
@@ -266,7 +266,6 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
   const [tripType, setTripType] = useState(tripToEdit?.tripType || 'One Way')
   const [estimatedDistance, setEstimatedDistance] = useState(tripToEdit?.estimatedDistance || '')
   const [fare, setFare] = useState(tripToEdit ? String(tripToEdit.fare) : '')
-  const [paymentStatus, setPaymentStatus] = useState(tripToEdit?.paymentStatus || 'Unpaid')
   const [notes, setNotes] = useState(tripToEdit?.notes || '')
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -330,7 +329,7 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
         tripType,
         estimatedDistance: estimatedDistance ? Number(estimatedDistance) : null,
         fare: Number(fare),
-        paymentStatus,
+        paymentStatus: tripToEdit?.paymentStatus || 'Pending',
         notes: notes.trim(),
       }
 
@@ -524,38 +523,23 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
         </div>
       </div>
 
-      {/* 6. Estimated Fare & Payment Status */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <div>
-          <FieldLabel required>Estimated Fare (₹)</FieldLabel>
-          <div className="relative">
-            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-soft">
-              <IndianRupee size={13} strokeWidth={2.5} />
-            </span>
-            <input
-              type="number"
-              min="1"
-              value={fare}
-              placeholder="0"
-              onChange={e => { setFare(e.target.value); setErrors(p => ({ ...p, fare: null })) }}
-              className={`${fieldCls(errors.fare)} pl-8 num`}
-            />
-          </div>
-          <FieldError msg={errors.fare} />
+      {/* 6. Estimated Fare */}
+      <div>
+        <FieldLabel required>Estimated Fare (₹)</FieldLabel>
+        <div className="relative">
+          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-soft">
+            <IndianRupee size={13} strokeWidth={2.5} />
+          </span>
+          <input
+            type="number"
+            min="1"
+            value={fare}
+            placeholder="0"
+            onChange={e => { setFare(e.target.value); setErrors(p => ({ ...p, fare: null })) }}
+            className={`${fieldCls(errors.fare)} pl-8 num`}
+          />
         </div>
-
-        <div>
-          <FieldLabel>Payment Status</FieldLabel>
-          <select
-            value={paymentStatus}
-            onChange={e => setPaymentStatus(e.target.value)}
-            className={fieldCls(false)}
-          >
-            {PAYMENT_STATUSES.map(p => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-        </div>
+        <FieldError msg={errors.fare} />
       </div>
 
       {/* 7. Notes */}

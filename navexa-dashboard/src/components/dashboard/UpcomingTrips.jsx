@@ -22,9 +22,9 @@ export default function UpcomingTrips({ onViewAll }) {
 
   const getPaymentBadge = (payment) => {
     switch (payment) {
-      case 'Paid':    return 'bg-emerald-50 text-emerald-700'
-      case 'Partial': return 'bg-amber-50 text-amber-700'
-      default:        return 'bg-slate-100 text-slate-700'
+      case 'Paid':        return 'bg-emerald-50 text-emerald-700'
+      case 'In Progress': return 'bg-sky-50 text-sky-700'
+      default:            return 'bg-amber-50 text-amber-700'
     }
   }
 
