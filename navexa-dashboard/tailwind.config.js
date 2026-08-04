@@ -80,6 +80,10 @@ export default {
         dash: {
           to: { strokeDashoffset: 0 },
         },
+        slideInRight: {
+          '0%': { opacity: 0, transform: 'translateX(100%)' },
+          '100%': { opacity: 1, transform: 'translateX(0)' },
+        },
       },
       animation: {
         fadeUp: 'fadeUp 0.3s ease-out both',
@@ -88,6 +92,7 @@ export default {
         slideUp: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both',
         slideDown: 'slideDown 0.25s ease-out both',
         dash: 'dash 1.2s ease-out forwards',
+        slideInRight: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) both',
       },
     },
   },

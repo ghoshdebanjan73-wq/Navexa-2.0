@@ -13,15 +13,25 @@ const STORAGE_KEY = 'navexa_finance_transactions'
 
 export const EXPENSE_CATEGORIES = [
   'Fuel',
-  'Driver Payment',
-  'Vehicle Service',
-  'Vehicle Repair',
-  'Insurance',
-  'Permit',
+  'Petrol',
+  'Diesel',
+  'CNG',
+  'Fastag',
   'Toll',
   'Parking',
+  'Vehicle Service',
+  'Vehicle Repair',
+  'Maintenance',
+  'Tyres',
+  'Insurance',
+  'Tax',
   'Cleaning',
+  'Driver Salary',
+  'Driver Allowance',
+  'Driver Payment',
   'Office Expense',
+  'Miscellaneous',
+  'Permit',
   'Software',
   'Marketing',
   'Other',
@@ -40,6 +50,7 @@ export const PAYMENT_METHODS = [
   'UPI',
   'Bank Transfer',
   'Card',
+  'Cheque',
   'Other',
 ]
 
@@ -132,20 +143,26 @@ export async function syncTransactions(userId) {
         id: item.id,
         type: item.type || (item.category === 'Fuel' || item.category === 'Maintenance' ? 'Expense' : 'Income'),
         category: item.category || 'Other',
+        subcategory: item.subcategory || '',
         amount: Number(item.amount || 0),
         description: item.description || item.transaction || '',
         paymentMethod: item.payment_method || 'Cash',
         date: item.transaction_date || item.date || new Date().toISOString().split('T')[0],
+        time: item.time || '',
         customerId: item.customer_id || '',
         tripId: item.trip_id || '',
         invoiceId: item.invoice_id || '',
         vehicleId: item.vehicle_id || '',
+        driverId: item.driver_id || '',
         vendor: item.vendor || '',
+        vendorPhone: item.vendor_phone || '',
+        billNumber: item.bill_number || item.reference_number || item.reference || '',
         reference: item.reference_number || item.reference || '',
         receiptPath: item.receipt_path || '',
         notes: item.notes || '',
         createdBy: item.created_by || 'Dispatcher',
         createdAt: item.created_at || new Date().toISOString(),
+        updatedAt: item.updated_at || '',
       }))
 
       liveTransactions.length = 0
@@ -161,24 +178,31 @@ export async function syncTransactions(userId) {
  * Add a new Income or Expense transaction
  */
 export async function addTransaction(payload, userId) {
+  const nowISO = new Date().toISOString()
   const newTxn = {
     id: payload.id || `TXN-${Date.now()}`,
     type: payload.type || 'Income',
     category: payload.category || 'Other',
+    subcategory: payload.subcategory || '',
     amount: Math.max(0, Number(payload.amount || 0)),
     description: payload.description ? payload.description.trim() : '',
     paymentMethod: payload.paymentMethod || 'Cash',
     date: payload.date || new Date().toISOString().split('T')[0],
+    time: payload.time || new Date().toTimeString().slice(0, 5),
     customerId: payload.customerId || '',
     tripId: payload.tripId || '',
     invoiceId: payload.invoiceId || '',
     vehicleId: payload.vehicleId || '',
+    driverId: payload.driverId || '',
     vendor: payload.vendor ? payload.vendor.trim() : '',
-    reference: payload.reference || payload.referenceNumber || '',
+    vendorPhone: payload.vendorPhone ? payload.vendorPhone.trim() : '',
+    billNumber: payload.billNumber || payload.reference || payload.referenceNumber || '',
+    reference: payload.reference || payload.referenceNumber || payload.billNumber || '',
     receiptPath: payload.receiptPath || '',
     notes: payload.notes ? payload.notes.trim() : '',
     createdBy: payload.createdBy || 'Dispatcher',
-    createdAt: new Date().toISOString(),
+    createdAt: nowISO,
+    updatedAt: nowISO,
   }
 
   // Idempotent Invoice check: If transaction has invoiceId, prevent duplicate invoice payments
@@ -199,20 +223,26 @@ export async function addTransaction(payload, userId) {
       id: newTxn.id,
       type: newTxn.type,
       category: newTxn.category,
+      subcategory: newTxn.subcategory || null,
       amount: newTxn.amount,
       description: newTxn.description,
       payment_method: newTxn.paymentMethod,
       transaction_date: newTxn.date,
+      time: newTxn.time || null,
       customer_id: newTxn.customerId || null,
       trip_id: newTxn.tripId || null,
       invoice_id: newTxn.invoiceId || null,
       vehicle_id: newTxn.vehicleId || null,
+      driver_id: newTxn.driverId || null,
       vendor: newTxn.vendor || null,
+      vendor_phone: newTxn.vendorPhone || null,
+      bill_number: newTxn.billNumber || null,
       reference_number: newTxn.reference || null,
       receipt_path: newTxn.receiptPath || null,
       notes: newTxn.notes || null,
       created_by: newTxn.createdBy,
       created_at: newTxn.createdAt,
+      updated_at: newTxn.updatedAt,
       user_id: userId,
     })
 
@@ -261,6 +291,7 @@ export async function updateTransaction(id, updates) {
     ...liveTransactions[idx],
     ...updates,
     amount: Math.max(0, Number(updates.amount !== undefined ? updates.amount : liveTransactions[idx].amount)),
+    updatedAt: new Date().toISOString(),
   }
 
   liveTransactions[idx] = updated
@@ -272,18 +303,24 @@ export async function updateTransaction(id, updates) {
       .update({
         type: updated.type,
         category: updated.category,
+        subcategory: updated.subcategory || null,
         amount: updated.amount,
         description: updated.description,
         payment_method: updated.paymentMethod,
         transaction_date: updated.date,
+        time: updated.time || null,
         customer_id: updated.customerId || null,
         trip_id: updated.tripId || null,
         invoice_id: updated.invoiceId || null,
         vehicle_id: updated.vehicleId || null,
+        driver_id: updated.driverId || null,
         vendor: updated.vendor || null,
+        vendor_phone: updated.vendorPhone || null,
+        bill_number: updated.billNumber || null,
         reference_number: updated.reference || null,
         receipt_path: updated.receiptPath || null,
         notes: updated.notes || null,
+        updated_at: updated.updatedAt,
       })
       .eq('id', id)
   } catch (err) {
@@ -321,11 +358,19 @@ export function filterAndSortTransactions(list, {
   category = 'All',
   paymentMethod = 'All',
   vehicleId = 'All',
+  driverId = 'All',
+  paymentStatus = 'All',
   startDate = null,
   endDate = null,
   dateRange = 'All',
-  sortBy = 'Newest'
-}) {
+  sortBy = 'Newest',
+  // Lookup maps for enriched search
+  customerMap = {},
+  vehicleMap = {},
+  driverMap = {},
+  tripMap = {},
+  invoiceMap = {},
+} = {}) {
   let result = [...list]
 
   if (type !== 'All') {
@@ -342,6 +387,10 @@ export function filterAndSortTransactions(list, {
 
   if (vehicleId !== 'All') {
     result = result.filter(t => t.vehicleId === vehicleId)
+  }
+
+  if (driverId !== 'All') {
+    result = result.filter(t => t.driverId === driverId)
   }
 
   // Exact Start/End Date Bounds Filtering
@@ -365,23 +414,50 @@ export function filterAndSortTransactions(list, {
     result = result.filter(t => new Date(t.date) >= cutoff)
   }
 
-  // Multi-Field Search (Customer, Invoice #, Trip ID, Vehicle, Category, Payment Method, Reference, Vendor)
+  // Multi-Field Search (Customer, Driver, Vehicle, Invoice #, Trip ID, Category, Payment Method, Reference, Vendor, Bill Number, Transaction ID)
   if (search && search.trim()) {
     const q = search.trim().toLowerCase()
     result = result.filter(t => {
-      const haystack = `${t.description || ''} ${t.category || ''} ${t.reference || ''} ${t.invoiceId || ''} ${t.tripId || ''} ${t.vehicleId || ''} ${t.vendor || ''} ${t.paymentMethod || ''}`.toLowerCase()
+      const customerName = customerMap[t.customerId]?.name || ''
+      const customerPhone = customerMap[t.customerId]?.phone || ''
+      const vehicleName = vehicleMap[t.vehicleId]?.name || ''
+      const vehicleReg = vehicleMap[t.vehicleId]?.registration || ''
+      const driverName = driverMap[t.driverId]?.name || ''
+      const tripRef = tripMap[t.tripId]?.id || t.tripId || ''
+      const invoiceRef = invoiceMap[t.invoiceId]?.invoiceNumber || t.invoiceId || ''
+      const haystack = [
+        t.id, t.description, t.category, t.subcategory,
+        t.reference, t.billNumber, t.invoiceId, t.tripId,
+        t.vehicleId, t.driverId, t.vendor, t.vendorPhone,
+        t.paymentMethod, t.createdBy, t.notes,
+        customerName, customerPhone, vehicleName, vehicleReg,
+        driverName, tripRef, invoiceRef
+      ].join(' ').toLowerCase()
       return haystack.includes(q)
     })
   }
 
-  // Sort (Newest first by default)
+  // Sort
   if (sortBy === 'Oldest') {
     result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0))
   } else if (sortBy === 'Highest Amount') {
     result.sort((a, b) => b.amount - a.amount)
   } else if (sortBy === 'Lowest Amount') {
     result.sort((a, b) => a.amount - b.amount)
+  } else if (sortBy === 'Customer Name') {
+    result.sort((a, b) => {
+      const ca = customerMap[a.customerId]?.name || a.description || ''
+      const cb = customerMap[b.customerId]?.name || b.description || ''
+      return ca.localeCompare(cb)
+    })
+  } else if (sortBy === 'Vehicle') {
+    result.sort((a, b) => {
+      const va = vehicleMap[a.vehicleId]?.name || a.vehicleId || ''
+      const vb = vehicleMap[b.vehicleId]?.name || b.vehicleId || ''
+      return va.localeCompare(vb)
+    })
   } else {
+    // Newest First (default)
     result.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
   }
 
