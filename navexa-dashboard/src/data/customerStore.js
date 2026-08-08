@@ -276,10 +276,14 @@ export function filterAndSortCustomers(customersList, { search = '', statusTab =
   // Sorting
   if (sortBy === 'Oldest') {
     result.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
-  } else if (sortBy === 'Customer Name') {
+  } else if (sortBy === 'Name A-Z' || sortBy === 'Customer Name') {
     result.sort((a, b) => a.name.localeCompare(b.name))
+  } else if (sortBy === 'Name Z-A') {
+    result.sort((a, b) => b.name.localeCompare(a.name))
   } else if (sortBy === 'Highest Revenue') {
     result.sort((a, b) => b.stats.lifetimeRevenue - a.stats.lifetimeRevenue)
+  } else if (sortBy === 'Highest Outstanding') {
+    result.sort((a, b) => b.stats.pendingAmount - a.stats.pendingAmount)
   } else if (sortBy === 'Most Trips') {
     result.sort((a, b) => b.stats.totalTrips - a.stats.totalTrips)
   } else {
