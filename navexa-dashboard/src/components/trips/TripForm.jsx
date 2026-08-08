@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Plus, Loader2, IndianRupee, Calendar, Clock, Lock, User, AlertCircle } from 'lucide-react'
+import { Plus, Loader2, IndianRupee, Calendar, Clock, Lock, User, AlertCircle, Gauge, Navigation, MapPin } from 'lucide-react'
 import { useUser } from '../../context/UserContext'
-import { liveVehicles, subscribeVehicles, getEffectiveVehicleStatus } from '../../data/vehicleStore'
+import { liveVehicles, subscribeVehicles } from '../../data/vehicleStore'
 import { liveDrivers, subscribeDrivers } from '../../data/driverStore'
 import { addTrip, editTrip, formatINR, checkTripConflicts } from '../../data/tripStore'
 import { getCustomerNames, subscribeCustomers, addCustomer, findByPhone, getCustomerByName } from '../../data/customerStore'
-import { getTripAmountPaid } from '../../data/paymentStore'
 
 const todayISO = () => {
   const d = new Date()
@@ -95,6 +94,17 @@ function FieldLabel({ children, optional = false, required = false }) {
 function FieldError({ msg }) {
   if (!msg) return null
   return <p className="mt-1 text-[11px] font-semibold text-rose-600">{msg}</p>
+}
+
+function FormSectionHeader({ title, step }) {
+  return (
+    <div className="flex items-center gap-2 border-b border-line pb-1.5 pt-2">
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-50 text-[10px] font-extrabold text-primary">
+        {step}
+      </span>
+      <h4 className="text-xs font-extrabold uppercase tracking-wider text-ink">{title}</h4>
+    </div>
+  )
 }
 
 // ─── Inline Add Customer Subform ─────────────────────────────────────────────
@@ -255,20 +265,35 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
     }
   }, [])
 
-  // Fields
+  // Section 1 — Booking
   const [customer, setCustomer] = useState(tripToEdit?.customer || initialCustomer)
   const [pickup, setPickup] = useState(tripToEdit?.pickupLocation || '')
   const [destination, setDestination] = useState(tripToEdit?.destination || '')
+
+  // Section 2 — Schedule
   const [tripDate, setTripDate] = useState(tripToEdit ? parseDateToISO(tripToEdit.tripDate) : todayISO())
   const [tripTime, setTripTime] = useState(tripToEdit ? parseTimeTo24h(tripToEdit.tripTime) : '10:30')
+  const [tripType, setTripType] = useState(tripToEdit?.tripType || 'One Way')
+
+  // Section 3 — Assignment
   const [vehicleId, setVehicleId] = useState(tripToEdit?.vehicleId || '')
   const [driverId, setDriverId] = useState(tripToEdit?.driverId || '')
-  const [tripType, setTripType] = useState(tripToEdit?.tripType || 'One Way')
+
+  // Section 4 — Trip Metrics (Estimated & Odometer Actual Distance)
   const [estimatedDistance, setEstimatedDistance] = useState(tripToEdit?.estimatedDistance || '')
+  const [startOdometer, setStartOdometer] = useState(tripToEdit?.startOdometer || '')
+  const [endOdometer, setEndOdometer] = useState(tripToEdit?.endOdometer || '')
   const [fare, setFare] = useState(tripToEdit ? String(tripToEdit.fare) : '')
+
+  // Section 5 — Additional Info
   const [notes, setNotes] = useState(tripToEdit?.notes || '')
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Auto-calculated actual distance
+  const computedActualDistance = (startOdometer && endOdometer && Number(endOdometer) >= Number(startOdometer))
+    ? (Number(endOdometer) - Number(startOdometer))
+    : null
 
   const validate = () => {
     const e = {}
@@ -281,6 +306,10 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
     if (!driverId) e.driver = 'Select a driver.'
     if (!fare || Number(fare) <= 0) {
       e.fare = 'Enter a valid fare.'
+    }
+
+    if (startOdometer && endOdometer && Number(endOdometer) < Number(startOdometer)) {
+      e.endOdometer = 'End odometer reading cannot be less than start odometer.'
     }
 
     // Check conflict
@@ -328,6 +357,9 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
         driverPhone: selectedDrv ? selectedDrv.phone : '',
         tripType,
         estimatedDistance: estimatedDistance ? Number(estimatedDistance) : null,
+        startOdometer: startOdometer ? Number(startOdometer) : null,
+        endOdometer: endOdometer ? Number(endOdometer) : null,
+        actualDistance: computedActualDistance,
         fare: Number(fare),
         paymentStatus: tripToEdit?.paymentStatus || 'Pending',
         notes: notes.trim(),
@@ -374,7 +406,9 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
         </div>
       )}
 
-      {/* 1. Customer Selection */}
+      {/* ─── SECTION 1: BOOKING ─── */}
+      <FormSectionHeader step="1" title="Booking Information" />
+
       <div>
         <div className="flex items-center justify-between mb-1">
           <FieldLabel required>Customer</FieldLabel>
@@ -402,21 +436,20 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
         <FieldError msg={errors.customer} />
       </div>
 
-      {/* 2. Pickup & Drop Locations */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
           <FieldLabel required>Pickup Location</FieldLabel>
           <input
             type="text"
             value={pickup}
-            placeholder="e.g. Airport Gate 3"
+            placeholder="e.g. Kolkata Airport Gate 3"
             onChange={e => { setPickup(e.target.value); setErrors(p => ({ ...p, pickup: null })) }}
             className={fieldCls(errors.pickup)}
           />
           <FieldError msg={errors.pickup} />
         </div>
         <div>
-          <FieldLabel required>Drop Location (Destination)</FieldLabel>
+          <FieldLabel required>Destination (Drop Off)</FieldLabel>
           <input
             type="text"
             value={destination}
@@ -428,8 +461,10 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
         </div>
       </div>
 
-      {/* 3. Trip Date & Pickup Time */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      {/* ─── SECTION 2: SCHEDULE ─── */}
+      <FormSectionHeader step="2" title="Schedule & Trip Type" />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div>
           <FieldLabel required>Trip Date</FieldLabel>
           <input
@@ -451,12 +486,29 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
           />
           <FieldError msg={errors.tripTime} />
         </div>
+
+        <div>
+          <FieldLabel>Trip Type</FieldLabel>
+          <select
+            value={tripType}
+            onChange={e => setTripType(e.target.value)}
+            className={fieldCls(false)}
+          >
+            <option value="One Way">One Way</option>
+            <option value="Round Trip">Round Trip</option>
+            <option value="Airport">Airport</option>
+            <option value="Outstation">Outstation</option>
+            <option value="Local">Local</option>
+          </select>
+        </div>
       </div>
 
-      {/* 4. Vehicle & Driver Selection */}
+      {/* ─── SECTION 3: ASSIGNMENT ─── */}
+      <FormSectionHeader step="3" title="Fleet & Driver Assignment" />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <FieldLabel required>Vehicle</FieldLabel>
+          <FieldLabel required>Assigned Vehicle</FieldLabel>
           <select
             value={vehicleId}
             onChange={e => { setVehicleId(e.target.value); setErrors(p => ({ ...p, vehicle: null, conflict: null })) }}
@@ -473,7 +525,7 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
         </div>
 
         <div>
-          <FieldLabel required>Driver</FieldLabel>
+          <FieldLabel required>Assigned Driver</FieldLabel>
           <select
             value={driverId}
             onChange={e => { setDriverId(e.target.value); setErrors(p => ({ ...p, driver: null, conflict: null })) }}
@@ -494,25 +546,12 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
         </div>
       </div>
 
-      {/* 5. Trip Type & Distance */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <div>
-          <FieldLabel>Trip Type</FieldLabel>
-          <select
-            value={tripType}
-            onChange={e => setTripType(e.target.value)}
-            className={fieldCls(false)}
-          >
-            <option value="One Way">One Way</option>
-            <option value="Round Trip">Round Trip</option>
-            <option value="Airport">Airport</option>
-            <option value="Outstation">Outstation</option>
-            <option value="Local">Local</option>
-          </select>
-        </div>
+      {/* ─── SECTION 4: TRIP METRICS & ODOMETER ─── */}
+      <FormSectionHeader step="4" title="Trip Distance & Fare Metrics" />
 
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div>
-          <FieldLabel optional>Estimated Distance (km)</FieldLabel>
+          <FieldLabel optional>Est. Distance (km)</FieldLabel>
           <input
             type="number"
             value={estimatedDistance}
@@ -521,9 +560,39 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
             className={`${fieldCls(false)} num`}
           />
         </div>
+
+        <div>
+          <FieldLabel optional>Start Odometer (km)</FieldLabel>
+          <input
+            type="number"
+            value={startOdometer}
+            placeholder="e.g. 45200"
+            onChange={e => setStartOdometer(e.target.value)}
+            className={`${fieldCls(false)} num`}
+          />
+        </div>
+
+        <div>
+          <FieldLabel optional>End Odometer (km)</FieldLabel>
+          <input
+            type="number"
+            value={endOdometer}
+            placeholder="e.g. 45248"
+            onChange={e => { setEndOdometer(e.target.value); setErrors(p => ({ ...p, endOdometer: null })) }}
+            className={`${fieldCls(errors.endOdometer)} num`}
+          />
+          <FieldError msg={errors.endOdometer} />
+        </div>
       </div>
 
-      {/* 6. Estimated Fare */}
+      {/* Actual Distance Calculated Notice */}
+      {computedActualDistance !== null && (
+        <div className="flex items-center gap-2 rounded-xl bg-sky-50 border border-sky-200 px-3.5 py-2 text-xs font-bold text-sky-800">
+          <Gauge size={15} className="text-sky-600 shrink-0" />
+          <span>Actual Distance Recorded: <span className="num text-sm">{computedActualDistance} km</span> ({endOdometer} - {startOdometer})</span>
+        </div>
+      )}
+
       <div>
         <FieldLabel required>Estimated Fare (₹)</FieldLabel>
         <div className="relative">
@@ -542,14 +611,16 @@ export default function TripForm({ onClose, onSaved, initialCustomer = '', tripT
         <FieldError msg={errors.fare} />
       </div>
 
-      {/* 7. Notes */}
+      {/* ─── SECTION 5: ADDITIONAL INFO ─── */}
+      <FormSectionHeader step="5" title="Additional Notes & Instructions" />
+
       <div>
         <FieldLabel optional>Notes / Instructions</FieldLabel>
         <textarea
           rows={2}
           value={notes}
           onChange={e => setNotes(e.target.value)}
-          placeholder="Passenger details, flight number, special requests..."
+          placeholder="Passenger contact info, flight details, special instructions..."
           className="w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-xs sm:text-sm text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 resize-none"
         />
       </div>

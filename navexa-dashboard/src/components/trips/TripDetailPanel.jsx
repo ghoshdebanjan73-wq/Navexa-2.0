@@ -174,16 +174,26 @@ export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelet
                   {trip.actualFare ? formatINR(trip.actualFare) : (trip.status === 'Completed' ? formatINR(trip.fare) : 'Pending')}
                 </p>
               </div>
-              {trip.estimatedDistance && (
+              <div>
+                <p className="text-[10px] font-bold text-ink-soft uppercase">Estimated Distance</p>
+                <p className="font-bold text-ink num mt-0.5">{trip.estimatedDistance ? `${trip.estimatedDistance} km` : 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-ink-soft uppercase">Actual Distance Driven</p>
+                <p className="font-extrabold text-primary num mt-0.5">{trip.actualDistance !== null ? `${trip.actualDistance} km` : 'Pending'}</p>
+              </div>
+              {trip.startOdometer && (
                 <div>
-                  <p className="text-[10px] font-bold text-ink-soft uppercase">Distance</p>
-                  <p className="font-bold text-ink num mt-0.5">{trip.estimatedDistance} km</p>
+                  <p className="text-[10px] font-bold text-ink-soft uppercase">Start Odometer</p>
+                  <p className="font-bold text-ink num mt-0.5">{trip.startOdometer} km</p>
                 </div>
               )}
-              <div>
-                <p className="text-[10px] font-bold text-ink-soft uppercase">Operational State</p>
-                <p className="font-bold text-ink mt-0.5">{trip.status}</p>
-              </div>
+              {trip.endOdometer && (
+                <div>
+                  <p className="text-[10px] font-bold text-ink-soft uppercase">End Odometer</p>
+                  <p className="font-bold text-ink num mt-0.5">{trip.endOdometer} km</p>
+                </div>
+              )}
             </div>
           </div>
 

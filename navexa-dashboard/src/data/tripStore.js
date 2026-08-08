@@ -117,6 +117,9 @@ export async function syncTrips(userId) {
         driverPhone: item.driver_phone || '',
         tripType: item.trip_type || 'One Way',
         estimatedDistance: item.estimated_distance ? Number(item.estimated_distance) : null,
+        startOdometer: item.start_odometer ? Number(item.start_odometer) : null,
+        endOdometer: item.end_odometer ? Number(item.end_odometer) : null,
+        actualDistance: item.actual_distance ? Number(item.actual_distance) : (item.end_odometer && item.start_odometer ? Math.max(0, Number(item.end_odometer) - Number(item.start_odometer)) : null),
         fare: Number(item.fare) || 0,
         actualFare: item.actual_fare ? Number(item.actual_fare) : null,
         paymentStatus: item.payment_status || 'Unpaid',
@@ -326,6 +329,9 @@ export async function addTrip(record, userId) {
     driverPhone: record.driverPhone ? record.driverPhone.trim() : '',
     tripType: record.tripType || 'One Way',
     estimatedDistance: record.estimatedDistance ? Number(record.estimatedDistance) : null,
+    startOdometer: record.startOdometer ? Number(record.startOdometer) : null,
+    endOdometer: record.endOdometer ? Number(record.endOdometer) : null,
+    actualDistance: record.actualDistance ? Number(record.actualDistance) : (record.endOdometer && record.startOdometer && Number(record.endOdometer) >= Number(record.startOdometer) ? Number(record.endOdometer) - Number(record.startOdometer) : null),
     fare: Number(record.fare) || 0,
     actualFare: record.actualFare ? Number(record.actualFare) : null,
     paymentStatus: record.paymentStatus || 'Unpaid',
@@ -376,6 +382,9 @@ export async function addTrip(record, userId) {
       driver_phone: newTrip.driverPhone,
       trip_type: newTrip.tripType,
       estimated_distance: newTrip.estimatedDistance,
+      start_odometer: newTrip.startOdometer,
+      end_odometer: newTrip.endOdometer,
+      actual_distance: newTrip.actualDistance,
       fare: newTrip.fare,
       actual_fare: newTrip.actualFare,
       status: newTrip.status,
@@ -509,9 +518,16 @@ export async function editTrip(id, updates, userName = 'Dispatcher') {
   }
 
   const now = new Date().toISOString()
+  const startOdo = updates.startOdometer !== undefined ? (updates.startOdometer ? Number(updates.startOdometer) : null) : liveTrips[idx].startOdometer
+  const endOdo = updates.endOdometer !== undefined ? (updates.endOdometer ? Number(updates.endOdometer) : null) : liveTrips[idx].endOdometer
+  const calcDistance = (endOdo !== null && startOdo !== null && endOdo >= startOdo) ? (endOdo - startOdo) : (updates.actualDistance !== undefined ? updates.actualDistance : liveTrips[idx].actualDistance)
+
   const updated = {
     ...liveTrips[idx],
     ...updates,
+    startOdometer: startOdo,
+    endOdometer: endOdo,
+    actualDistance: calcDistance,
     updatedAt: now,
   }
 
@@ -545,6 +561,9 @@ export async function editTrip(id, updates, userName = 'Dispatcher') {
         driver_phone: updated.driverPhone,
         trip_type: updated.tripType,
         estimated_distance: updated.estimatedDistance,
+        start_odometer: updated.startOdometer,
+        end_odometer: updated.endOdometer,
+        actual_distance: updated.actualDistance,
         fare: updated.fare,
         actual_fare: updated.actualFare,
         status: updated.status,
