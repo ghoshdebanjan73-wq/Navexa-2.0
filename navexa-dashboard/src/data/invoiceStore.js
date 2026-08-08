@@ -379,9 +379,25 @@ export async function createInvoice(payload, userId) {
 }
 
 /** Record or update invoice payment */
-export async function recordInvoicePayment(invoiceId, { amountPaid: newPaymentVal, paymentMethod, paymentDate, referenceNumber, notes }) {
+export async function recordInvoicePayment(invoiceId, { amountPaid, paymentMethod, paymentDate, referenceNumber, notes }) {
   const idx = liveInvoices.findIndex(inv => inv.id === invoiceId)
   if (idx === -1) throw new Error('Invoice not found.')
+
+  const inv = liveInvoices[idx]
+  const paymentAmount = Math.max(0, Number(amountPaid || 0))
+  if (isNaN(paymentAmount) || paymentAmount <= 0) {
+    throw new Error('Please enter a valid payment amount greater than ₹0.')
+  }
+
+  const alreadyPaid = Number(inv.amountPaid || 0)
+  const totalAmount = Number(inv.totalAmount || 0)
+  const updatedAmountPaid = alreadyPaid + paymentAmount
+  const updatedBalance = Math.max(0, totalAmount - updatedAmountPaid)
+
+  let updatedStatus = 'Partially Paid'
+  if (updatedAmountPaid >= totalAmount) {
+    updatedStatus = 'Paid'
+  }
 
   const paymentRecord = {
     id: `PAY-${invoiceId}-${Date.now()}`,
@@ -395,7 +411,7 @@ export async function recordInvoicePayment(invoiceId, { amountPaid: newPaymentVa
   }
 
   const existingPayments = Array.isArray(inv.payments) ? inv.payments : []
-  const updatedPayments = paymentAmount > 0 ? [paymentRecord, ...existingPayments] : existingPayments
+  const updatedPayments = [paymentRecord, ...existingPayments]
 
   const updatedInvoice = {
     ...inv,
@@ -406,27 +422,25 @@ export async function recordInvoicePayment(invoiceId, { amountPaid: newPaymentVa
     paymentDate: paymentDate || new Date().toISOString().split('T')[0],
     referenceNumber: referenceNumber || inv.referenceNumber || '',
     payments: updatedPayments,
-    notes: notes ? `${inv.notes || ''}\n[Payment recorded: ₹${paymentAmount}]`.trim() : inv.notes,
+    notes: notes ? `${inv.notes || ''}\n[Payment recorded: ₹${paymentAmount}]`.trim() : (inv.notes || ''),
   }
 
   liveInvoices[idx] = updatedInvoice
   notify()
 
-  // Log transaction for Finance Store
-  if (paymentAmount > 0) {
-    addTransaction({
-      id: `PAY-${invoiceId}-${Date.now()}`,
-      type: 'Income',
-      category: 'Invoice Payment',
-      amount: paymentAmount,
-      invoiceId: inv.id,
-      customerId: inv.customerId || '',
-      date: paymentDate || new Date().toISOString().split('T')[0],
-      reference: referenceNumber || inv.invoiceNumber,
-      description: `Payment received for Invoice ${inv.invoiceNumber} (${inv.customerName})`,
-      paymentMethod: paymentMethod || 'Cash',
-    })
-  }
+  // Log single transaction for Finance Store
+  addTransaction({
+    id: `PAY-${invoiceId}-${Date.now()}`,
+    type: 'Income',
+    category: 'Invoice Payment',
+    amount: paymentAmount,
+    invoiceId: inv.id,
+    customerId: inv.customerId || '',
+    date: paymentDate || new Date().toISOString().split('T')[0],
+    reference: referenceNumber || inv.invoiceNumber,
+    description: `Payment received for Invoice ${inv.invoiceNumber} (${inv.customerName})`,
+    paymentMethod: paymentMethod || 'Cash',
+  })
 
   try {
     const { error } = await supabase

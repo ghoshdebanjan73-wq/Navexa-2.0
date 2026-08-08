@@ -31,7 +31,11 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
 
   if (!isOpen || !invoice) return null
 
-  const remainingBalance = Number(invoice.balanceDue !== undefined ? invoice.balanceDue : (invoice.totalAmount - (invoice.amountPaid || 0)))
+  const invoiceTotal = Number(invoice.totalAmount || 0)
+  const alreadyPaid = Number(invoice.amountPaid || 0)
+  const currentBalanceDue = Number(invoice.balanceDue !== undefined ? invoice.balanceDue : Math.max(0, invoiceTotal - alreadyPaid))
+  const enteredPayment = Number(amountPaid) || 0
+  const remainingAfterPayment = Math.max(0, currentBalanceDue - enteredPayment)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -39,12 +43,12 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
 
     const val = Number(amountPaid)
     if (isNaN(val) || val <= 0) {
-      setError('Please enter a valid payment amount greater than 0.')
+      setError('Please enter a valid payment amount greater than ₹0.')
       return
     }
 
-    if (val > remainingBalance + 0.01) {
-      setError(`Payment amount (${formatINR(val)}) cannot exceed the remaining balance (${formatINR(remainingBalance)}).`)
+    if (val > currentBalanceDue + 0.01) {
+      setError(`Payment amount (${formatINR(val)}) cannot exceed the remaining balance (${formatINR(currentBalanceDue)}).`)
       return
     }
 
@@ -104,15 +108,25 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
           </div>
         )}
 
-        {/* Balance Info Box */}
-        <div className="rounded-xl border border-line bg-bg p-3.5 flex items-center justify-between text-xs">
+        {/* Dynamic Financial Balance Box */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-xl border border-line bg-bg p-3 text-xs">
           <div>
-            <p className="text-[10px] font-bold text-ink-soft uppercase tracking-wider">Total Invoice</p>
-            <p className="font-extrabold text-ink num text-sm">{formatINR(invoice.totalAmount)}</p>
+            <p className="text-[9px] font-bold text-ink-soft uppercase tracking-wider">Total Invoice</p>
+            <p className="font-extrabold text-ink num text-xs">{formatINR(invoiceTotal)}</p>
           </div>
-          <div className="text-right">
-            <p className="text-[10px] font-bold text-ink-soft uppercase tracking-wider">Remaining Balance</p>
-            <p className="font-extrabold text-rose-700 num text-sm">{formatINR(remainingBalance)}</p>
+          <div>
+            <p className="text-[9px] font-bold text-ink-soft uppercase tracking-wider">Already Paid</p>
+            <p className="font-bold text-emerald-700 num text-xs">{formatINR(alreadyPaid)}</p>
+          </div>
+          <div>
+            <p className="text-[9px] font-bold text-ink-soft uppercase tracking-wider">Payment Now</p>
+            <p className="font-extrabold text-primary num text-xs">{formatINR(enteredPayment)}</p>
+          </div>
+          <div className="text-right sm:text-left">
+            <p className="text-[9px] font-bold text-ink-soft uppercase tracking-wider">Remaining</p>
+            <p className={`font-extrabold num text-xs ${remainingAfterPayment === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+              {formatINR(remainingAfterPayment)}
+            </p>
           </div>
         </div>
 
@@ -132,9 +146,12 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
                 required
                 step="any"
                 min="1"
-                max={remainingBalance}
+                max={currentBalanceDue}
                 value={amountPaid}
-                onChange={(e) => setAmountPaid(e.target.value)}
+                onChange={(e) => {
+                  setError('')
+                  setAmountPaid(e.target.value)
+                }}
                 className="w-full rounded-xl border border-line bg-bg pl-8 pr-3.5 py-2 text-xs font-bold text-ink num outline-none transition-all focus:bg-surface focus:border-primary"
               />
             </div>
