@@ -1,35 +1,40 @@
 import { MapPin } from 'lucide-react'
 import { useRouter } from '../../context/RouterContext'
+import Button from './Button'
 
 /**
  * NotFoundPage
- * Displayed when a user navigates to an unknown URL.
+ * Displayed when a user navigates to an unknown route.
  * Provides clear messaging and a way back to Dashboard.
  */
 export default function NotFoundPage() {
   const { navigate } = useRouter()
 
   return (
-    <div className="flex min-h-[60vh] w-full items-center justify-center px-6">
-      <div className="max-w-sm w-full text-center space-y-5">
+    <div className="flex min-h-[65vh] w-full items-center justify-center px-4 py-8">
+      <div className="max-w-sm w-full text-center space-y-4 rounded-2xl border border-line bg-surface p-8 shadow-xs">
         <div className="flex justify-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-50">
-            <MapPin size={32} className="text-primary" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary shadow-xs">
+            <MapPin size={28} />
           </div>
         </div>
         <div>
-          <p className="text-5xl font-black text-ink mb-1">404</p>
-          <h1 className="text-lg font-bold text-ink mb-1">Page not found</h1>
-          <p className="text-sm text-ink-soft">
-            The page you&apos;re looking for doesn&apos;t exist or has been moved.
+          <p className="text-4xl font-extrabold text-ink num tracking-tight">404</p>
+          <h1 className="text-base font-bold text-ink mt-1">Page not found</h1>
+          <p className="text-xs text-ink-soft mt-1 leading-relaxed">
+            The requested page does not exist or may have been moved.
           </p>
         </div>
-        <button
-          onClick={() => navigate('Dashboard', true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-primary-700 transition-colors cursor-pointer"
-        >
-          Go to Dashboard
-        </button>
+        <div className="pt-2">
+          <Button
+            onClick={() => navigate('Dashboard', true)}
+            variant="primary"
+            size="md"
+            fullWidth
+          >
+            Go to Dashboard
+          </Button>
+        </div>
       </div>
     </div>
   )

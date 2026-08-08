@@ -1,13 +1,14 @@
 import { useRouter } from '../../context/RouterContext'
+import Button from './Button'
 
 export default function PlaceholderPage({ title, icon: Icon, desc }) {
   const { navigate } = useRouter()
 
   return (
-    <div className="mx-auto max-w-[1440px] w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-20 md:pb-8 space-y-5">
+    <div className="page-container">
       {/* Page Header */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-extrabold text-ink tracking-tight">{title}</h1>
+      <div className="border-b border-line pb-4">
+        <h1 className="page-title">{title}</h1>
         <p className="text-xs text-ink-soft mt-0.5">{desc}</p>
       </div>
 
@@ -20,12 +21,14 @@ export default function PlaceholderPage({ title, icon: Icon, desc }) {
         <p className="mt-1 max-w-sm text-xs text-ink-soft leading-relaxed">
           {desc} This area is part of the Navexa navigation system.
         </p>
-        <button
+        <Button
           onClick={() => navigate('Dashboard')}
-          className="mt-5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90 shadow-xs cursor-pointer"
+          variant="primary"
+          size="md"
+          className="mt-5"
         >
           Return to Dashboard
-        </button>
+        </Button>
       </div>
     </div>
   )

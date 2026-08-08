@@ -1,3 +1,7 @@
+/**
+ * Standardized Navexa StatusBadge Component
+ * Semantic color badges for all trip, invoice, payment, vehicle, driver, and system statuses.
+ */
 const STYLES = {
   // Operational & Trip Stages
   Booked: 'bg-slate-100 text-slate-700 border-slate-200',
@@ -13,9 +17,11 @@ const STYLES = {
 
   // Vehicle & Driver Statuses
   Available: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  'On Trip': 'bg-accent-50 text-accent-700 border-accent-100',
+  'On Trip': 'bg-blue-50 text-blue-700 border-blue-200',
   Maintenance: 'bg-amber-50 text-amber-700 border-amber-200',
   Inactive: 'bg-slate-100 text-slate-600 border-slate-200',
+  OnDuty: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  OffDuty: 'bg-slate-100 text-slate-600 border-slate-200',
 
   // Financial & Payment Statuses
   Paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -24,7 +30,12 @@ const STYLES = {
   Unpaid: 'bg-rose-50 text-rose-700 border-rose-200',
   Overdue: 'bg-rose-50 text-rose-700 border-rose-200',
   Draft: 'bg-slate-100 text-slate-600 border-slate-200',
-  Failed: 'bg-danger-bg text-danger border-danger/20',
+  Failed: 'bg-rose-50 text-rose-700 border-rose-200',
+
+  // User & Access Statuses
+  Admin: 'bg-primary-50 text-primary border-primary-100',
+  Staff: 'bg-slate-100 text-slate-700 border-slate-200',
+  Dispatcher: 'bg-indigo-50 text-indigo-700 border-indigo-200',
 }
 
 export default function StatusBadge({ status, showDot = true, size = 'md', className = '' }) {

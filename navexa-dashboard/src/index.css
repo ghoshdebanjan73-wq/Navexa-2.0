@@ -3,14 +3,29 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-primary: #172554;
+    --color-primary-hover: #1e3a8a;
+    --color-bg: #F8FAFC;
+    --color-surface: #FFFFFF;
+    --color-ink: #0F172A;
+    --color-ink-soft: #64748B;
+    --color-line: #E2E8F0;
+  }
+
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
   }
+
   body {
-    @apply bg-bg text-ink font-sans antialiased selection:bg-accent-100 selection:text-accent-700;
+    @apply bg-bg text-ink font-sans antialiased selection:bg-accent-100 selection:text-accent-700 min-h-screen;
+    overscroll-behavior-y: none;
   }
+
+  /* Custom scrollbars */
   * {
     scrollbar-width: thin;
     scrollbar-color: #CBD5E1 transparent;
@@ -26,14 +41,17 @@
   *::-webkit-scrollbar-thumb:hover {
     background-color: #94A3B8;
   }
+
+  /* Standardized focus outlines */
   :focus-visible {
     outline: 2px solid #2563EB;
     outline-offset: 2px;
-    border-radius: 6px;
+    border-radius: 8px;
   }
 }
 
 @layer utilities {
+  /* Tabular numbers for currency and codes */
   .num {
     font-family: 'IBM Plex Mono', ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
@@ -45,22 +63,55 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  /* Standardized Page Wrapper */
+  /* Standardized Page Container */
   .page-container {
-    @apply mx-auto max-w-[1440px] w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-24 md:pb-8 space-y-5 lg:space-y-6 animate-fadeIn;
+    @apply mx-auto max-w-[1440px] w-full px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 pb-28 md:pb-10 space-y-4 sm:space-y-6 animate-fadeIn;
   }
 
-  /* Card Surface Utility */
+  /* Standard Card Surface */
   .card-surface {
     @apply rounded-2xl border border-line bg-surface p-4 sm:p-5 shadow-xs transition-all duration-150;
   }
 
-  /* Form Input Utility */
-  .form-input {
-    @apply w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-xs sm:text-sm text-ink outline-none transition-all duration-150 focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50 placeholder:text-ink-soft/70;
+  .card-interactive {
+    @apply card-surface hover:border-slate-300 hover:shadow-card active:scale-[0.995] cursor-pointer;
   }
 
-  /* Signature motif: a dashed "route line" */
+  /* Standardized Typography Classes */
+  .page-title {
+    @apply text-lg sm:text-xl md:text-2xl font-extrabold tracking-tight text-ink;
+  }
+
+  .section-title {
+    @apply text-sm sm:text-base font-bold tracking-tight text-ink;
+  }
+
+  .card-title {
+    @apply text-xs font-bold uppercase tracking-wider text-ink-soft;
+  }
+
+  .label-text {
+    @apply text-xs font-bold text-ink mb-1 block;
+  }
+
+  .helper-text {
+    @apply text-[11px] text-ink-soft mt-1 leading-normal;
+  }
+
+  /* Standard Form Control Styles */
+  .form-input {
+    @apply w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-xs sm:text-sm font-medium text-ink outline-none transition-all duration-150 focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50 placeholder:text-ink-soft/60;
+  }
+
+  .form-select {
+    @apply w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-xs sm:text-sm font-medium text-ink outline-none transition-all duration-150 focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50 cursor-pointer;
+  }
+
+  .form-textarea {
+    @apply w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-xs sm:text-sm font-medium text-ink outline-none transition-all duration-150 focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50 resize-none placeholder:text-ink-soft/60;
+  }
+
+  /* Signature motif: dashed route line */
   .route-line {
     background-image: repeating-linear-gradient(
       to bottom,

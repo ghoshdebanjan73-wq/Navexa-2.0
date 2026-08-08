@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import {
   ResponsiveContainer,
   LineChart,
@@ -8,7 +8,7 @@ import {
   CartesianGrid,
   Tooltip
 } from 'recharts'
-import { chartData as mockChartData } from '../../data/mockData'
+import { BarChart3 } from 'lucide-react'
 
 const formatINR = (n) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n)
@@ -40,10 +40,10 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 export default function IncomeExpenseChart({ transactions = [], dateBounds = null }) {
-  // Generate dynamic chart data based on filtered transactions if available
+  // Generate dynamic chart data based strictly on real transactions
   const dynamicData = useMemo(() => {
     if (!transactions || transactions.length === 0) {
-      return mockChartData['30 Days'] || []
+      return []
     }
 
     // Sort transactions chronologically
@@ -78,17 +78,12 @@ export default function IncomeExpenseChart({ transactions = [], dateBounds = nul
       point.profit = point.income - point.expense
     })
 
-    const points = Array.from(groupMap.values())
-    if (points.length < 2 && sorted.length > 0) {
-      // Ensure at least two points for visual line rendering
-      return points
-    }
-
-    return points.length > 0 ? points : mockChartData['30 Days']
+    return Array.from(groupMap.values())
   }, [transactions, dateBounds])
 
-  const totalIncome = dynamicData.reduce((acc, curr) => acc + (curr.income || 0), 0)
-  const totalExpense = dynamicData.reduce((acc, curr) => acc + (curr.expense || 0), 0)
+  const hasData = dynamicData.length > 0
+  const totalIncome = hasData ? dynamicData.reduce((acc, curr) => acc + (curr.income || 0), 0) : 0
+  const totalExpense = hasData ? dynamicData.reduce((acc, curr) => acc + (curr.expense || 0), 0) : 0
   const netMargin = totalIncome - totalExpense
 
   return (
@@ -102,15 +97,12 @@ export default function IncomeExpenseChart({ transactions = [], dateBounds = nul
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-semibold text-ink-soft">
-          <span className="inline-flex items-center gap-1">
+        <div className="flex items-center gap-3 text-xs font-semibold text-ink-soft">
+          <span className="inline-flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" /> Income
           </span>
-          <span className="inline-flex items-center gap-1">
+          <span className="inline-flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-rose-600" /> Expenses
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="h-2.5 w-2.5 rounded-full bg-sky-500" /> Profit
           </span>
         </div>
       </div>
@@ -137,53 +129,65 @@ export default function IncomeExpenseChart({ transactions = [], dateBounds = nul
         </div>
       </div>
 
-      {/* Minimal Line Chart Container */}
-      <div className="h-[250px] w-full pt-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={dynamicData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-            
-            <XAxis
-              dataKey="label"
-              tick={{ fontSize: 11, fill: '#64748B' }}
-              axisLine={{ stroke: '#E2E8F0' }}
-              tickLine={false}
-            />
-            
-            <YAxis
-              tick={{ fontSize: 11, fill: '#64748B' }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={compactINR}
-              width={42}
-            />
-            
-            <Tooltip content={<CustomTooltip />} />
-            
-            {/* Green Line for Income */}
-            <Line
-              type="monotone"
-              dataKey="income"
-              stroke="#059669"
-              strokeWidth={2.5}
-              dot={{ r: 3, fill: '#059669' }}
-              activeDot={{ r: 5 }}
-              isAnimationActive={false}
-            />
-            
-            {/* Red Line for Expenses */}
-            <Line
-              type="monotone"
-              dataKey="expense"
-              stroke="#E11D48"
-              strokeWidth={2}
-              dot={{ r: 3, fill: '#E11D48' }}
-              activeDot={{ r: 5 }}
-              isAnimationActive={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Chart or Clean Empty State */}
+      {hasData ? (
+        <div className="h-[250px] w-full pt-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={dynamicData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+              
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: '#64748B' }}
+                axisLine={{ stroke: '#E2E8F0' }}
+                tickLine={false}
+              />
+              
+              <YAxis
+                tick={{ fontSize: 11, fill: '#64748B' }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={compactINR}
+                width={42}
+              />
+              
+              <Tooltip content={<CustomTooltip />} />
+              
+              {/* Green Line for Income */}
+              <Line
+                type="monotone"
+                dataKey="income"
+                stroke="#059669"
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: '#059669' }}
+                activeDot={{ r: 5 }}
+                isAnimationActive={false}
+              />
+              
+              {/* Red Line for Expenses */}
+              <Line
+                type="monotone"
+                dataKey="expense"
+                stroke="#E11D48"
+                strokeWidth={2}
+                dot={{ r: 3, fill: '#E11D48' }}
+                activeDot={{ r: 5 }}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-10 px-4 text-center rounded-xl border border-dashed border-line bg-bg/50">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-ink-soft mb-2">
+            <BarChart3 size={20} />
+          </div>
+          <p className="text-xs font-bold text-ink">No transactions for this period</p>
+          <p className="text-[11px] text-ink-soft mt-0.5 max-w-xs">
+            Financial cash flow graph will populate automatically when transactions are recorded in this date range.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
