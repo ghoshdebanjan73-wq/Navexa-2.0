@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Route, CheckCircle2, Car, Wrench, ShieldAlert } from 'lucide-react'
 import StatCard from '../ui/StatCard'
 import WelcomeSection from './WelcomeSection'
+import AttentionAlerts from './AttentionAlerts'
 import UpcomingTrips from './UpcomingTrips'
 import RecentActivity from './RecentActivity'
 import VehicleOverview from './VehicleOverview'
@@ -46,7 +47,7 @@ export default function StaffDashboard({ onNavigate }) {
   }
 
   return (
-    <div className="relative mx-auto max-w-[1440px] w-full space-y-5 lg:space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-20 md:pb-8 animate-fadeIn">
+    <div className="page-container relative space-y-5 lg:space-y-6">
       {/* Toast banner */}
       {toastMessage && (
         <div className="fixed top-16 right-4 z-50 flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs sm:text-sm font-bold text-emerald-800 shadow-lg animate-slideDown">
@@ -58,18 +59,21 @@ export default function StaffDashboard({ onNavigate }) {
       {/* 1. Welcome / Context */}
       <WelcomeSection />
 
-      {/* 2. Staff Stats - Operations Focused (No Finance!) */}
-      <section className="w-full">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-ink-soft mb-2">
+      {/* LEVEL 1 — Attention Items */}
+      <AttentionAlerts onNavigate={onNavigate} />
+
+      {/* 2. Staff Stats - Operations Focused */}
+      <section className="w-full space-y-2">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-ink-soft">
           Fleet Operations Overview
         </h3>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 lg:gap-5 w-full">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
           <div onClick={handleGoToTrips} className="cursor-pointer">
             <StatCard
               icon={Route}
               title="Upcoming Trips"
               value={tripCounts.upcoming}
-              trend="Check Schedule"
+              infoText="Check Schedule"
               direction="neutral"
               format="plain"
             />
@@ -78,7 +82,7 @@ export default function StaffDashboard({ onNavigate }) {
             icon={Car}
             title="Available Vehicles"
             value={vehicleStats.available}
-            trend="Ready for dispatch"
+            infoText="Ready for dispatch"
             direction="neutral"
             format="plain"
             highlighted
@@ -87,7 +91,7 @@ export default function StaffDashboard({ onNavigate }) {
             icon={Wrench}
             title="Under Maintenance"
             value={vehicleStats.maintenance}
-            trend="Active repair logs"
+            infoText="Active repair logs"
             direction="neutral"
             format="plain"
           />
@@ -95,7 +99,7 @@ export default function StaffDashboard({ onNavigate }) {
             icon={ShieldAlert}
             title="Ongoing Trips"
             value={tripCounts.ongoing}
-            trend="Currently on road"
+            infoText="Currently on road"
             direction="neutral"
             format="plain"
           />
@@ -114,7 +118,7 @@ export default function StaffDashboard({ onNavigate }) {
 
       {/* 4. Fleet Status Overview Snapshot */}
       <div className="w-full">
-        <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs">
+        <div className="rounded-2xl border border-line bg-surface p-4 sm:p-5 shadow-xs">
           <div className="mb-4">
             <h3 className="text-sm font-extrabold text-ink">Fleet Status Summary</h3>
             <p className="text-[11px] font-medium text-ink-soft">Real-time status tracking of all registered vehicles.</p>

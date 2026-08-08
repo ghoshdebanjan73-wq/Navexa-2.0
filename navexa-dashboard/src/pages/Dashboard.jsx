@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Wallet, TrendingDown, Scale, Route, CheckCircle2, FileText } from 'lucide-react'
+import { Wallet, TrendingDown, Scale, Route, CheckCircle2, FileText, AlertCircle } from 'lucide-react'
 import StatCard from '../components/ui/StatCard'
 import WelcomeSection from '../components/dashboard/WelcomeSection'
+import AttentionAlerts from '../components/dashboard/AttentionAlerts'
 import QuickActions from '../components/dashboard/QuickActions'
 import QuickActionModal from '../components/ui/QuickActionModal'
 import UpcomingTrips from '../components/dashboard/UpcomingTrips'
@@ -15,7 +16,17 @@ import { useUser } from '../context/UserContext'
 import { computeSummary, subscribeSummary } from '../data/transactionStore'
 import { subscribeTrips, getTripCounts } from '../data/tripStore'
 import { getInvoiceStats, subscribeInvoices } from '../data/invoiceStore'
+import { formatINR } from '../data/tripStore'
 
+/**
+ * NAVEXA DASHBOARD — PREMIUM BUSINESS COMMAND CENTER
+ * Information Hierarchy:
+ * LEVEL 1 — What requires attention now (Overdue invoices, pending trip assignments, fleet alerts)
+ * LEVEL 2 — Business & Financial KPI Overview
+ * LEVEL 3 — Quick Actions (Add Trip, Record Income, Record Expense, Add Customer, Create Invoice)
+ * LEVEL 4 — Today's / Upcoming Operations + Recent Activity Timeline
+ * LEVEL 5 — Financial Cash Flow Trends, Transactions Table & Fleet/Customer Snapshots
+ */
 export default function Dashboard({ onNavigate }) {
   const [modalType, setModalType] = useState(null)
   const [toastMessage, setToastMessage] = useState(null)
@@ -48,14 +59,18 @@ export default function Dashboard({ onNavigate }) {
     if (onNavigate) onNavigate('Trips')
   }
 
+  const handleGoToInvoices = () => {
+    if (onNavigate) onNavigate('Invoices')
+  }
+
   // Render dedicated staff dashboard if role is Staff
   if (currentUser?.role === 'Staff') {
     return <StaffDashboard onNavigate={onNavigate} />
   }
 
   return (
-    <div className="page-container relative">
-      {/* Success Toast Notification Banner */}
+    <div className="page-container relative space-y-5 lg:space-y-6">
+      {/* Toast Notification Banner */}
       {toastMessage && (
         <div className="fixed top-16 right-4 z-50 flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs sm:text-sm font-bold text-emerald-800 shadow-lg animate-slideDown">
           <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
@@ -63,32 +78,55 @@ export default function Dashboard({ onNavigate }) {
         </div>
       )}
 
-      {/* 1. Welcome / Business Context */}
+      {/* DASHBOARD HEADER */}
       <WelcomeSection />
 
-      {/* 2. Quick Actions */}
-      <QuickActions onActionClick={(type) => setModalType(type)} />
+      {/* LEVEL 1 — WHAT REQUIRES ATTENTION NOW */}
+      <AttentionAlerts onNavigate={onNavigate} />
 
-      {/* 3. Business Summary Cards — driven by reactive store */}
-      <section className="w-full">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-ink-soft mb-2">
-          Business Summary
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4 lg:gap-5 w-full">
-          <StatCard icon={Wallet}      title="Income"         {...summary.income} />
-          <StatCard icon={TrendingDown} title="Expenses"      {...summary.expenses} />
-          <StatCard icon={Scale}        title="Balance"       {...summary.balance} highlighted />
+      {/* LEVEL 2 — PRIMARY BUSINESS & FINANCIAL KPI OVERVIEW */}
+      <section className="w-full space-y-2">
+        <div className="flex items-center justify-between px-0.5">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-ink-soft">
+            Business & Financial Overview
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 w-full">
+          <StatCard icon={Wallet} title="Income" {...summary.income} />
+          <StatCard icon={TrendingDown} title="Expenses" {...summary.expenses} />
+          <StatCard icon={Scale} title="Balance" {...summary.balance} highlighted />
+          
           <div onClick={handleGoToTrips} className="cursor-pointer">
-            <StatCard icon={Route} title="Upcoming Trips" value={upcomingCount} trend="Schedule" direction="neutral" format="plain" />
+            <StatCard
+              icon={Route}
+              title="Upcoming Trips"
+              value={upcomingCount}
+              infoText={upcomingCount > 0 ? `${upcomingCount} Scheduled` : 'No Trips'}
+              direction="neutral"
+              format="plain"
+            />
           </div>
-          <div onClick={() => onNavigate && onNavigate('Invoices')} className="cursor-pointer">
-            <StatCard icon={FileText} title="Total Invoices" value={invoiceStats.total} trend={`${invoiceStats.paidCount} Paid`} direction="up" format="plain" />
+
+          <div onClick={handleGoToInvoices} className="cursor-pointer">
+            <StatCard
+              icon={FileText}
+              title="Receivables"
+              value={invoiceStats.unpaidCount > 0 ? formatINR(invoiceStats.unpaidAmount) : invoiceStats.total}
+              infoText={`${invoiceStats.unpaidCount} Unpaid Invoices`}
+              sentiment={invoiceStats.unpaidCount > 0 ? 'warning' : 'positive'}
+              direction="neutral"
+              format={invoiceStats.unpaidCount > 0 ? 'currency' : 'plain'}
+            />
           </div>
         </div>
       </section>
 
-      {/* 4. Operational Grid: Upcoming Trips (70%) + Recent Activity (30%) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6 w-full items-start">
+      {/* LEVEL 3 — QUICK ACTIONS */}
+      <QuickActions onActionClick={(type) => setModalType(type)} />
+
+      {/* LEVEL 4 — OPERATIONS & RECENT ACTIVITY GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6 w-full items-stretch">
         <div className="lg:col-span-2">
           <UpcomingTrips onViewAll={handleGoToTrips} />
         </div>
@@ -97,18 +135,13 @@ export default function Dashboard({ onNavigate }) {
         </div>
       </div>
 
-
-      {/* 5. Financial Overview */}
-      <div className="w-full">
+      {/* LEVEL 5 — FINANCIAL TRENDS & RECENT TRANSACTIONS */}
+      <div className="w-full space-y-5">
         <IncomeExpenseChart />
-      </div>
-
-      {/* 6. Recent Transactions */}
-      <div className="w-full">
         <TransactionsTable />
       </div>
 
-      {/* 7. Secondary Snapshots: Vehicle + Customer Overview */}
+      {/* LEVEL 5 — SECONDARY SNAPSHOTS: FLEET & CUSTOMERS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6 w-full">
         <VehicleOverview />
         <CustomersOverview onViewAll={() => onNavigate && onNavigate('Customers')} />
