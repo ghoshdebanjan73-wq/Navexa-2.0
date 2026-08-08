@@ -12,6 +12,8 @@ import {
 } from '../../data/paymentStore'
 import StatusBadge from '../ui/StatusBadge'
 
+import { printInvoice } from '../../utils/printInvoice'
+
 export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordPayment, isAdmin, currentUser }) {
   const printRef = useRef(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
@@ -38,11 +40,11 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
   const paymentsList = (Array.isArray(invoice.payments) && invoice.payments.length > 0) ? invoice.payments : rawStorePayments
 
   const handlePrint = () => {
-    window.print()
+    printInvoice(invoice)
   }
 
   const handleDownload = () => {
-    window.print()
+    printInvoice(invoice)
   }
 
   const handleDeletePayment = (paymentId) => {

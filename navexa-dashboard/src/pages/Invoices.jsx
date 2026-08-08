@@ -18,6 +18,7 @@ import ConfirmDialog from '../components/trips/ConfirmDialog'
 import EmptyState from '../components/ui/EmptyState'
 import StatusBadge from '../components/ui/StatusBadge'
 import PageHeader from '../components/ui/PageHeader'
+import { printInvoice } from '../utils/printInvoice'
 
 export default function InvoicesPage() {
   const { user } = useUser()
@@ -499,9 +500,17 @@ export default function InvoicesPage() {
                           <button
                             onClick={() => setViewingInvoice(invoice)}
                             className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-soft hover:bg-slate-100 hover:text-ink transition-colors cursor-pointer"
-                            title="View Invoice & Print PDF"
+                            title="View Invoice Details"
                           >
                             <Eye size={15} />
+                          </button>
+
+                          <button
+                            onClick={() => printInvoice(invoice)}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-soft hover:bg-slate-100 hover:text-primary transition-colors cursor-pointer"
+                            title="Print / Export A4 Invoice PDF"
+                          >
+                            <Printer size={15} />
                           </button>
 
                           {isAdmin && invoice.paymentStatus !== 'Paid' && (
@@ -585,10 +594,10 @@ export default function InvoicesPage() {
                   {/* Quick Actions Footer */}
                   <div className="flex items-center justify-between pt-1" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => setViewingInvoice(invoice)}
+                      onClick={() => printInvoice(invoice)}
                       className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline cursor-pointer"
                     >
-                      <Printer size={13} /> View & Print
+                      <Printer size={13} /> Print PDF
                     </button>
 
                     <div className="flex items-center gap-2">
