@@ -11,7 +11,7 @@ import AddDriverModal from '../components/drivers/AddDriverModal'
 import EditDriverModal from '../components/drivers/EditDriverModal'
 import DriverDetailPanel from '../components/drivers/DriverDetailPanel'
 import ConfirmDialog from '../components/trips/ConfirmDialog'
-import EmptyState from '../components/ui/EmptyState'
+import EmptyState, { SearchEmptyState, FilterEmptyState } from '../components/ui/EmptyState'
 import StatusBadge from '../components/ui/StatusBadge'
 
 export default function DriversPage() {
@@ -212,18 +212,20 @@ export default function DriversPage() {
 
       {/* Driver List Content */}
       {filteredDrivers.length === 0 ? (
-        <EmptyState
-          icon={UserCheck}
-          title="No drivers found"
-          description={
-            search || statusFilter !== 'All'
-              ? 'No driver matches your search or filter options.'
-              : 'Add your first driver profile to assign trips and manage driver licenses.'
-          }
-          actionLabel={isAdmin && !search && statusFilter === 'All' ? 'Add Driver' : undefined}
-          onAction={isAdmin && !search && statusFilter === 'All' ? () => setShowAddModal(true) : undefined}
-          actionIcon={Plus}
-        />
+        search ? (
+          <SearchEmptyState query={search} onClearSearch={() => setSearch('')} />
+        ) : statusFilter !== 'All' ? (
+          <FilterEmptyState onClearFilters={() => setStatusFilter('All')} />
+        ) : (
+          <EmptyState
+            icon={UserCheck}
+            title="No drivers yet"
+            description="Add your first driver profile to begin assigning trips and tracking driver licenses."
+            actionLabel={isAdmin ? 'Add Driver' : undefined}
+            onAction={isAdmin ? () => setShowAddModal(true) : undefined}
+            actionIcon={Plus}
+          />
+        )
       ) : (
         <>
           {/* DESKTOP TABLE VIEW */}

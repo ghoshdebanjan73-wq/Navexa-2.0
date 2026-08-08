@@ -13,7 +13,7 @@ import AddVehicleModal from '../components/vehicles/AddVehicleModal'
 import EditVehicleModal from '../components/vehicles/EditVehicleModal'
 import VehicleDetailPanel from '../components/vehicles/VehicleDetailPanel'
 import ConfirmDialog from '../components/trips/ConfirmDialog'
-import EmptyState from '../components/ui/EmptyState'
+import EmptyState, { SearchEmptyState, FilterEmptyState } from '../components/ui/EmptyState'
 import StatusBadge from '../components/ui/StatusBadge'
 
 // Status Badge Styles
@@ -344,18 +344,20 @@ export default function VehiclesPage() {
 
       {/* Vehicle Content Views */}
       {filteredVehicles.length === 0 ? (
-        <EmptyState
-          icon={Car}
-          title="No vehicles found"
-          description={
-            search || statusTab !== 'All' || typeFilter !== 'All'
-              ? 'No vehicle matches your filter criteria.'
-              : 'Add your transport vehicles to start logging trips, documents, and maintenance schedules.'
-          }
-          actionLabel={isAdmin && !search && statusTab === 'All' ? 'Add Vehicle' : undefined}
-          onAction={isAdmin && !search && statusTab === 'All' ? () => setShowAddModal(true) : undefined}
-          actionIcon={Plus}
-        />
+        search ? (
+          <SearchEmptyState query={search} onClearSearch={() => setSearch('')} />
+        ) : statusTab !== 'All' || typeFilter !== 'All' ? (
+          <FilterEmptyState onClearFilters={() => { setStatusTab('All'); setTypeFilter('All'); }} />
+        ) : (
+          <EmptyState
+            icon={Car}
+            title="No vehicles yet"
+            description="Add a vehicle to start managing your fleet, logging trips, and tracking maintenance schedules."
+            actionLabel={isAdmin ? 'Add Vehicle' : undefined}
+            onAction={isAdmin ? () => setShowAddModal(true) : undefined}
+            actionIcon={Plus}
+          />
+        )
       ) : (
         <>
           {/* DESKTOP TABLE VIEW */}

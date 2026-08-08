@@ -14,7 +14,7 @@ import AddCustomerModal from '../components/customers/AddCustomerModal'
 import EditCustomerModal from '../components/customers/EditCustomerModal'
 import CustomerDetailPanel from '../components/customers/CustomerDetailPanel'
 import ConfirmDialog from '../components/trips/ConfirmDialog'
-import EmptyState from '../components/ui/EmptyState'
+import EmptyState, { SearchEmptyState, FilterEmptyState } from '../components/ui/EmptyState'
 
 // Metric Chip Component
 function MetricChip({ label, value, active, colorStyle, onClick }) {
@@ -239,18 +239,20 @@ export default function CustomersPage() {
 
       {/* Customer Content Views */}
       {filteredCustomers.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title="No customers found"
-          description={
-            search || statusTab !== 'All' || specialFilter !== 'All'
-              ? 'No customer matches your search or filter parameters.'
-              : 'Add customer profiles to log trips, track lifetime revenue, and manage contact preferences.'
-          }
-          actionLabel={isAdmin && !search && statusTab === 'All' && specialFilter === 'All' ? 'Add Customer' : undefined}
-          onAction={isAdmin && !search && statusTab === 'All' && specialFilter === 'All' ? () => setShowAddModal(true) : undefined}
-          actionIcon={Plus}
-        />
+        search ? (
+          <SearchEmptyState query={search} onClearSearch={() => setSearch('')} />
+        ) : statusTab !== 'All' || specialFilter !== 'All' ? (
+          <FilterEmptyState onClearFilters={() => { setStatusTab('All'); setSpecialFilter('All'); }} />
+        ) : (
+          <EmptyState
+            icon={Users}
+            title="No customers yet"
+            description="Add your first customer to start building your customer records and managing trips."
+            actionLabel={isAdmin ? 'Add Customer' : undefined}
+            onAction={isAdmin ? () => setShowAddModal(true) : undefined}
+            actionIcon={Plus}
+          />
+        )
       ) : (
         <>
           {/* DESKTOP TABLE VIEW */}
