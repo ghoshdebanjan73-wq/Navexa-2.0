@@ -100,6 +100,7 @@ export async function syncInvoices(userId) {
         paymentDate: item.payment_date || null,
         referenceNumber: item.reference_number || '',
         notes: item.notes || '',
+        payments: Array.isArray(item.payments) ? item.payments : [],
         companyDetails: item.company_details || {},
         tripDetails: item.trip_details || {},
         createdBy: item.created_by,
@@ -382,16 +383,19 @@ export async function recordInvoicePayment(invoiceId, { amountPaid: newPaymentVa
   const idx = liveInvoices.findIndex(inv => inv.id === invoiceId)
   if (idx === -1) throw new Error('Invoice not found.')
 
-  const inv = liveInvoices[idx]
-  const paymentAmount = Number(newPaymentVal || 0)
-  const updatedAmountPaid = Number(inv.amountPaid || 0) + paymentAmount
-  const totalAmount = Number(inv.totalAmount || 0)
-  const updatedBalance = Math.max(0, totalAmount - updatedAmountPaid)
-
-  let updatedStatus = 'Partially Paid'
-  if (updatedAmountPaid >= totalAmount) {
-    updatedStatus = 'Paid'
+  const paymentRecord = {
+    id: `PAY-${invoiceId}-${Date.now()}`,
+    date: paymentDate || new Date().toISOString().split('T')[0],
+    time: new Date().toTimeString().slice(0, 5),
+    amount: paymentAmount,
+    paymentMethod: paymentMethod || 'Cash',
+    referenceNumber: referenceNumber || '',
+    notes: notes || '',
+    recordedBy: 'Dispatcher',
   }
+
+  const existingPayments = Array.isArray(inv.payments) ? inv.payments : []
+  const updatedPayments = paymentAmount > 0 ? [paymentRecord, ...existingPayments] : existingPayments
 
   const updatedInvoice = {
     ...inv,
@@ -401,7 +405,8 @@ export async function recordInvoicePayment(invoiceId, { amountPaid: newPaymentVa
     paymentMethod: paymentMethod || inv.paymentMethod || 'Cash',
     paymentDate: paymentDate || new Date().toISOString().split('T')[0],
     referenceNumber: referenceNumber || inv.referenceNumber || '',
-    notes: notes ? `${inv.notes}\n[Payment recorded: ₹${paymentAmount}]` : inv.notes,
+    payments: updatedPayments,
+    notes: notes ? `${inv.notes || ''}\n[Payment recorded: ₹${paymentAmount}]`.trim() : inv.notes,
   }
 
   liveInvoices[idx] = updatedInvoice
@@ -433,6 +438,7 @@ export async function recordInvoicePayment(invoiceId, { amountPaid: newPaymentVa
         payment_method: updatedInvoice.paymentMethod,
         payment_date: updatedInvoice.paymentDate,
         reference_number: updatedInvoice.referenceNumber,
+        payments: updatedInvoice.payments,
         notes: updatedInvoice.notes,
       })
       .eq('id', invoiceId)

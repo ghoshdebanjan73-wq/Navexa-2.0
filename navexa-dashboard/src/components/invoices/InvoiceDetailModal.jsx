@@ -21,8 +21,21 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
   const company = invoice.companyDetails || {}
   const trip = invoice.tripDetails || {}
 
-  const paymentSummary = getInvoicePaymentSummary(invoice.id, invoice.totalAmount, invoice.paymentStatus)
-  const paymentsList = getPaymentsByInvoice(invoice.id)
+  const amountPaid = Number(invoice.amountPaid || 0)
+  const remainingBalance = Number(invoice.balanceDue !== undefined ? invoice.balanceDue : Math.max(0, invoice.totalAmount - amountPaid))
+  const progressPercentage = invoice.totalAmount > 0 ? Math.min(100, Math.round((amountPaid / invoice.totalAmount) * 100)) : 0
+  const paymentStatus = invoice.paymentStatus || (remainingBalance === 0 ? 'Paid' : amountPaid > 0 ? 'Partially Paid' : 'Pending')
+
+  const paymentSummary = {
+    totalAmount: invoice.totalAmount,
+    amountPaid,
+    remainingBalance,
+    progressPercentage,
+    paymentStatus,
+  }
+
+  const rawStorePayments = getPaymentsByInvoice(invoice.id)
+  const paymentsList = (Array.isArray(invoice.payments) && invoice.payments.length > 0) ? invoice.payments : rawStorePayments
 
   const handlePrint = () => {
     window.print()

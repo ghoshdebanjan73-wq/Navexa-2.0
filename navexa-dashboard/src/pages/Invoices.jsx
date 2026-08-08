@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import {
   FileText, Plus, Search, X, Filter, MoreHorizontal, Eye, Edit3, Trash2,
   CheckCircle, CreditCard, ArrowRight, Calendar, User, Route, IndianRupee,
-  AlertTriangle, ShieldCheck
+  AlertTriangle, ShieldCheck, SlidersHorizontal, Check, Printer
 } from 'lucide-react'
 import { useUser } from '../context/UserContext'
 import {
@@ -17,17 +17,7 @@ import RecordInvoicePaymentModal from '../components/invoices/RecordInvoicePayme
 import ConfirmDialog from '../components/trips/ConfirmDialog'
 import EmptyState from '../components/ui/EmptyState'
 import StatusBadge from '../components/ui/StatusBadge'
-import { getInvoicePaymentSummary } from '../data/paymentStore'
-
-// Status badge styling helper
-const STATUS_COLORS = {
-  Draft:          'bg-slate-100 text-slate-700 border-slate-200',
-  Sent:           'bg-sky-50 text-sky-700 border-sky-200',
-  Paid:           'bg-emerald-50 text-emerald-700 border-emerald-200',
-  'Partially Paid': 'bg-amber-50 text-amber-700 border-amber-200',
-  Overdue:        'bg-rose-50 text-rose-700 border-rose-200',
-  Cancelled:      'bg-slate-200 text-slate-600 border-slate-300',
-}
+import PageHeader from '../components/ui/PageHeader'
 
 export default function InvoicesPage() {
   const { user } = useUser()
@@ -44,6 +34,9 @@ export default function InvoicesPage() {
   const [customerFilter, setCustomerFilter] = useState('All')
   const [sortBy, setSortBy] = useState('Newest')
 
+  // Mobile Filter Sheet Modal
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
+
   // Modals
   const [viewingInvoice, setViewingInvoice] = useState(null)
   const [paymentInvoice, setPaymentInvoice] = useState(null)
@@ -53,7 +46,7 @@ export default function InvoicesPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // Toast
+  // Toast Banner State
   const [toast, setToast] = useState(null)
 
   useEffect(() => {
@@ -76,6 +69,21 @@ export default function InvoicesPage() {
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 4000)
+  }
+
+  // Active Filter Count
+  const activeFilterCount = useMemo(() => {
+    let count = 0
+    if (statusFilter !== 'All') count++
+    if (customerFilter !== 'All') count++
+    return count
+  }, [statusFilter, customerFilter])
+
+  const handleResetFilters = () => {
+    setStatusFilter('All')
+    setCustomerFilter('All')
+    setSearch('')
+    setSortBy('Newest')
   }
 
   // Filtered & Sorted Invoices
@@ -130,10 +138,10 @@ export default function InvoicesPage() {
   return (
     <div className="page-container">
       
-      {/* Toast Alert */}
+      {/* Toast Alert Banner */}
       {toast && (
         <div
-          className={`fixed right-6 top-16 z-50 flex items-center gap-2.5 rounded-xl border p-4 shadow-pop animate-slideDown ${
+          className={`fixed right-4 top-16 z-50 flex items-center gap-2.5 rounded-xl border p-4 shadow-pop animate-slideDown ${
             toast.type === 'error'
               ? 'bg-rose-50 border-rose-200 text-rose-800'
               : 'bg-emerald-50 border-emerald-200 text-emerald-800'
@@ -144,133 +152,142 @@ export default function InvoicesPage() {
         </div>
       )}
 
-      {/* Header & Primary Actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-line pb-4">
-        <div>
-          <h2 className="text-xl font-extrabold text-ink tracking-tight">Invoice Management</h2>
-          <p className="text-xs text-ink-soft">Generate tax invoices from completed trips, record payments, and export PDF billing statements.</p>
-        </div>
+      {/* 1. Header & Primary Action */}
+      <PageHeader
+        title="Invoices & Billing"
+        description="Manage billing, client invoices, payment collections, and payment history."
+        badge={`${invoices.length} Invoices`}
+        actionLabel={isAdmin ? 'Generate Invoice' : undefined}
+        onAction={isAdmin ? () => setShowAutoGenerateModal(true) : undefined}
+        actionIcon={Plus}
+      />
 
-        {isAdmin && (
-          <button
-            onClick={() => setShowAutoGenerateModal(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-primary-600 transition-colors cursor-pointer shrink-0"
-          >
-            <Plus size={16} strokeWidth={2.5} />
-            <span>Generate Invoice from Trip</span>
-          </button>
-        )}
-      </div>
-
-      {/* Invoice Financial Stats Bar */}
+      {/* 2. Billing Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div
+        {/* Total Billed */}
+        <button
           onClick={() => setStatusFilter('All')}
-          className={`rounded-2xl border p-4 shadow-xs flex items-center gap-3 cursor-pointer transition-all ${
-            statusFilter === 'All' ? 'border-primary bg-primary-50/60' : 'border-line bg-surface hover:bg-slate-50'
+          className={`flex items-center gap-3 rounded-2xl border p-4 shadow-xs text-left transition-all cursor-pointer ${
+            statusFilter === 'All' ? 'border-primary bg-primary-50' : 'border-line bg-surface hover:bg-slate-50'
           }`}
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary font-extrabold text-sm">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white font-extrabold text-sm num">
             {stats.total}
           </div>
           <div>
-            <p className="text-xs font-bold text-ink">Total Invoices</p>
-            <p className="text-[11px] text-ink-soft num font-bold">{formatINR(stats.totalPaidRevenue + stats.totalPendingReceivables)}</p>
+            <p className="text-xs font-bold text-ink">Total Billed</p>
+            <p className="text-xs sm:text-sm font-extrabold text-ink num">{formatINR(stats.totalPaidRevenue + stats.totalPendingReceivables)}</p>
           </div>
-        </div>
+        </button>
 
-        <div
+        {/* Paid Revenue */}
+        <button
           onClick={() => setStatusFilter('Paid')}
-          className={`rounded-2xl border p-4 shadow-xs flex items-center gap-3 cursor-pointer transition-all ${
-            statusFilter === 'Paid' ? 'border-primary bg-primary-50/60' : 'border-line bg-surface hover:bg-slate-50'
+          className={`flex items-center gap-3 rounded-2xl border p-4 shadow-xs text-left transition-all cursor-pointer ${
+            statusFilter === 'Paid' ? 'border-primary bg-primary-50' : 'border-line bg-surface hover:bg-slate-50'
           }`}
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 font-extrabold text-sm">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 font-extrabold text-sm num">
             {stats.paidCount}
           </div>
           <div>
-            <p className="text-xs font-bold text-ink">Paid</p>
-            <p className="text-[11px] text-emerald-700 num font-bold">{formatINR(stats.totalPaidRevenue)}</p>
+            <p className="text-xs font-bold text-ink">Paid Revenue</p>
+            <p className="text-xs sm:text-sm font-extrabold text-emerald-700 num">{formatINR(stats.totalPaidRevenue)}</p>
           </div>
-        </div>
+        </button>
 
-        <div
+        {/* Pending Receivables */}
+        <button
           onClick={() => setStatusFilter('Sent')}
-          className={`rounded-2xl border p-4 shadow-xs flex items-center gap-3 cursor-pointer transition-all ${
-            statusFilter === 'Sent' || statusFilter === 'Partially Paid' ? 'border-primary bg-primary-50/60' : 'border-line bg-surface hover:bg-slate-50'
+          className={`flex items-center gap-3 rounded-2xl border p-4 shadow-xs text-left transition-all cursor-pointer ${
+            statusFilter === 'Sent' || statusFilter === 'Partially Paid' ? 'border-primary bg-primary-50' : 'border-line bg-surface hover:bg-slate-50'
           }`}
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 font-extrabold text-sm">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 font-extrabold text-sm num">
             {stats.pendingCount}
           </div>
           <div>
-            <p className="text-xs font-bold text-ink">Pending Receivables</p>
-            <p className="text-[11px] text-amber-800 num font-bold">{formatINR(stats.totalPendingReceivables)}</p>
+            <p className="text-xs font-bold text-ink">Outstanding</p>
+            <p className="text-xs sm:text-sm font-extrabold text-amber-800 num">{formatINR(stats.totalPendingReceivables)}</p>
           </div>
-        </div>
+        </button>
 
-        <div
+        {/* Overdue */}
+        <button
           onClick={() => setStatusFilter('Overdue')}
-          className={`rounded-2xl border p-4 shadow-xs flex items-center gap-3 cursor-pointer transition-all ${
-            statusFilter === 'Overdue' ? 'border-primary bg-primary-50/60' : 'border-line bg-surface hover:bg-slate-50'
+          className={`flex items-center gap-3 rounded-2xl border p-4 shadow-xs text-left transition-all cursor-pointer ${
+            statusFilter === 'Overdue' ? 'border-primary bg-primary-50' : 'border-line bg-surface hover:bg-slate-50'
           }`}
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-700 font-extrabold text-sm">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-700 font-extrabold text-sm num">
             {stats.overdueCount}
           </div>
           <div>
             <p className="text-xs font-bold text-ink">Overdue</p>
-            <p className="text-[11px] text-ink-soft">Requires follow up</p>
+            <p className="text-[11px] text-rose-700 font-bold">Action Needed</p>
           </div>
-        </div>
+        </button>
       </div>
 
-      {/* Search, Filters & Sort Controls */}
+      {/* 3. Search, Filter & Sort Controls */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-line bg-surface p-3.5 shadow-xs">
-        {/* Instant Search */}
+        {/* Instant Search Input */}
         <div className="relative flex-1 min-w-[240px]">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-soft" />
+          <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-soft" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by invoice number (NVX-000001), customer, trip ID..."
-            className="w-full rounded-xl border border-line bg-bg pl-9 pr-8 py-2 text-xs text-ink outline-none transition-all focus:bg-surface focus:border-primary"
+            className="w-full rounded-xl border border-line bg-bg pl-9.5 pr-8 py-2 text-xs sm:text-sm font-medium text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15"
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft hover:text-ink"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft hover:text-ink cursor-pointer"
             >
               <X size={14} />
             </button>
           )}
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Payment Status Filter */}
-          <div className="flex items-center gap-1.5 rounded-xl border border-line bg-bg px-2.5 py-1.5 text-xs">
-            <Filter size={13} className="text-ink-soft" />
+        {/* Action Controls & Mobile Filter Button */}
+        <div className="flex items-center gap-2">
+          {/* Mobile Filter Trigger Button */}
+          <button
+            onClick={() => setMobileFilterOpen(true)}
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-all cursor-pointer ${
+              activeFilterCount > 0
+                ? 'border-primary bg-primary-50 text-primary'
+                : 'border-line bg-surface text-ink hover:bg-slate-50'
+            }`}
+          >
+            <SlidersHorizontal size={14} />
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-primary text-white h-4.5 w-4.5 flex items-center justify-center text-[10px] font-black">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          {/* Desktop Filter Selectors */}
+          <div className="hidden lg:flex items-center gap-2">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-transparent font-semibold text-ink outline-none cursor-pointer"
+              className="rounded-xl border border-line bg-bg px-3 py-2 text-xs font-semibold text-ink outline-none cursor-pointer"
             >
               <option value="All">All Statuses</option>
               {INVOICE_STATUSES.map(st => (
                 <option key={st} value={st}>{st}</option>
               ))}
             </select>
-          </div>
 
-          {/* Customer Filter */}
-          <div className="flex items-center gap-1.5 rounded-xl border border-line bg-bg px-2.5 py-1.5 text-xs">
-            <User size={13} className="text-ink-soft" />
             <select
               value={customerFilter}
               onChange={(e) => setCustomerFilter(e.target.value)}
-              className="bg-transparent font-semibold text-ink outline-none cursor-pointer"
+              className="rounded-xl border border-line bg-bg px-3 py-2 text-xs font-semibold text-ink outline-none cursor-pointer"
             >
               <option value="All">All Customers</option>
               {customers.map(c => (
@@ -280,39 +297,115 @@ export default function InvoicesPage() {
           </div>
 
           {/* Sort Dropdown */}
-          <div className="flex items-center gap-1.5 rounded-xl border border-line bg-bg px-2.5 py-1.5 text-xs">
-            <span className="text-[11px] font-bold text-ink-soft">Sort:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="bg-transparent font-semibold text-ink outline-none cursor-pointer"
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="rounded-xl border border-line bg-bg px-3 py-2 text-xs font-bold text-ink outline-none cursor-pointer"
+          >
+            <option value="Newest">Newest First</option>
+            <option value="Oldest">Oldest First</option>
+            <option value="Highest Amount">Highest Amount</option>
+            <option value="Lowest Amount">Lowest Amount</option>
+          </select>
+
+          {activeFilterCount > 0 && (
+            <button
+              onClick={handleResetFilters}
+              className="text-xs font-bold text-rose-600 hover:underline cursor-pointer px-1"
             >
-              <option value="Newest">Newest First</option>
-              <option value="Oldest">Oldest First</option>
-              <option value="Highest Amount">Highest Amount</option>
-              <option value="Lowest Amount">Lowest Amount</option>
-            </select>
-          </div>
+              Reset
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Content Views */}
+      {/* 📱 Mobile Filter Bottom Drawer Sheet Modal */}
+      {mobileFilterOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-xs animate-fadeIn"
+          onClick={e => { if (e.target === e.currentTarget) setMobileFilterOpen(false) }}
+        >
+          <div className="w-full rounded-t-3xl border-t border-line bg-surface p-5 shadow-pop animate-slideUp space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div className="flex items-center gap-2">
+                <Filter size={16} className="text-primary" />
+                <h3 className="text-sm font-bold text-ink">Filter Invoices & Billing</h3>
+              </div>
+              <button
+                onClick={() => setMobileFilterOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-soft hover:bg-slate-100 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              {/* Payment Status */}
+              <div>
+                <label className="label-text">Billing Status</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="All">All Statuses</option>
+                  {INVOICE_STATUSES.map(st => (
+                    <option key={st} value={st}>{st}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Customer */}
+              <div>
+                <label className="label-text">Billed Customer</label>
+                <select
+                  value={customerFilter}
+                  onChange={(e) => setCustomerFilter(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="All">All Customers</option>
+                  {customers.map(c => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-3 border-t border-line">
+              <button
+                onClick={handleResetFilters}
+                className="rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-ink-soft hover:bg-slate-100 cursor-pointer"
+              >
+                Reset All
+              </button>
+              <button
+                onClick={() => setMobileFilterOpen(false)}
+                className="rounded-xl bg-primary px-6 py-2.5 text-xs font-bold text-white shadow-xs cursor-pointer"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Invoice List Section */}
       {filteredInvoices.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="No invoices found"
           description={
-            search || statusFilter !== 'All'
-              ? 'No invoice matches your search or filter criteria.'
+            search || activeFilterCount > 0
+              ? 'No invoice matches your search or filter parameters.'
               : 'Auto-generate invoices from completed trips to start managing billing and receivables.'
           }
-          actionLabel={isAdmin && !search && statusFilter === 'All' ? 'Generate Invoice from Trip' : undefined}
-          onAction={isAdmin && !search && statusFilter === 'All' ? () => setShowAutoGenerateModal(true) : undefined}
-          actionIcon={Plus}
+          actionLabel={isAdmin && !search && activeFilterCount === 0 ? 'Generate Invoice from Trip' : 'Clear Filters'}
+          onAction={isAdmin && !search && activeFilterCount === 0 ? () => setShowAutoGenerateModal(true) : handleResetFilters}
+          actionIcon={isAdmin && !search && activeFilterCount === 0 ? Plus : X}
         />
       ) : (
         <>
-          {/* DESKTOP TABLE VIEW */}
+          {/* 🖥️ DESKTOP & TABLET TABLE VIEW */}
           <div className="hidden md:block overflow-hidden rounded-2xl border border-line bg-surface shadow-xs">
             <table className="w-full text-left text-xs">
               <thead className="border-b border-line bg-bg text-[11px] font-bold uppercase tracking-wider text-ink-soft">
@@ -322,14 +415,18 @@ export default function InvoicesPage() {
                   <th className="px-4 py-3">Trip Reference</th>
                   <th className="px-4 py-3">Invoice Date</th>
                   <th className="px-4 py-3">Due Date</th>
-                  <th className="px-4 py-3 text-right">Amount</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Total Billed</th>
+                  <th className="px-4 py-3 text-right">Paid</th>
+                  <th className="px-4 py-3 text-right">Remaining</th>
+                  <th className="px-4 py-3 text-center">Status</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line font-medium text-ink">
                 {filteredInvoices.map((invoice) => {
-                  const summary = getInvoicePaymentSummary(invoice.id, invoice.totalAmount, invoice.paymentStatus)
+                  const paid = Number(invoice.amountPaid || 0)
+                  const remaining = Number(invoice.balanceDue !== undefined ? invoice.balanceDue : Math.max(0, invoice.totalAmount - paid))
+                  const progressPct = invoice.totalAmount > 0 ? Math.min(100, Math.round((paid / invoice.totalAmount) * 100)) : 0
 
                   return (
                     <tr
@@ -363,25 +460,35 @@ export default function InvoicesPage() {
                         {invoice.dueDate}
                       </td>
 
-                      {/* Amount */}
+                      {/* Total Billed */}
                       <td className="px-4 py-3.5 text-right font-extrabold num">
                         {formatINR(invoice.totalAmount)}
                       </td>
 
-                      {/* Payment Status & Progress */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex flex-col items-start gap-1">
-                          <StatusBadge status={summary.paymentStatus} size="sm" />
-                          <div className="flex items-center gap-1.5 text-[10px] text-ink-soft font-bold num">
-                            <div className="h-1.5 w-10 rounded-full bg-slate-200 overflow-hidden">
+                      {/* Paid */}
+                      <td className="px-4 py-3.5 text-right text-emerald-700 font-bold num">
+                        {formatINR(paid)}
+                      </td>
+
+                      {/* Balance Due */}
+                      <td className="px-4 py-3.5 text-right text-rose-700 font-extrabold num">
+                        {formatINR(remaining)}
+                      </td>
+
+                      {/* Status & Progress */}
+                      <td className="px-4 py-3.5 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <StatusBadge status={invoice.paymentStatus} size="sm" />
+                          <div className="flex items-center gap-1 text-[10px] text-ink-soft font-bold num">
+                            <div className="h-1.5 w-8 rounded-full bg-slate-200 overflow-hidden">
                               <div
                                 className={`h-full rounded-full ${
-                                  summary.progressPercentage === 100 ? 'bg-emerald-500' : summary.progressPercentage > 0 ? 'bg-sky-500' : 'bg-slate-300'
+                                  progressPct === 100 ? 'bg-emerald-500' : progressPct > 0 ? 'bg-sky-500' : 'bg-slate-300'
                                 }`}
-                                style={{ width: `${summary.progressPercentage}%` }}
+                                style={{ width: `${progressPct}%` }}
                               />
                             </div>
-                            <span>{summary.progressPercentage}%</span>
+                            <span>{progressPct}%</span>
                           </div>
                         </div>
                       </td>
@@ -392,7 +499,7 @@ export default function InvoicesPage() {
                           <button
                             onClick={() => setViewingInvoice(invoice)}
                             className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-soft hover:bg-slate-100 hover:text-ink transition-colors cursor-pointer"
-                            title="View Invoice & Print"
+                            title="View Invoice & Print PDF"
                           >
                             <Eye size={15} />
                           </button>
@@ -400,10 +507,10 @@ export default function InvoicesPage() {
                           {isAdmin && invoice.paymentStatus !== 'Paid' && (
                             <button
                               onClick={() => setPaymentInvoice(invoice)}
-                              className="rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 text-[11px] font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
+                              className="rounded-lg bg-emerald-600 text-white border border-emerald-700 px-2.5 py-1 text-[11px] font-bold hover:bg-emerald-700 transition-colors cursor-pointer shadow-2xs"
                               title="Record Payment"
                             >
-                              Pay
+                              Collect
                             </button>
                           )}
 
@@ -425,10 +532,11 @@ export default function InvoicesPage() {
             </table>
           </div>
 
-          {/* MOBILE CARD VIEW */}
+          {/* 📱 MOBILE RESPONSIVE CARDS VIEW */}
           <div className="grid grid-cols-1 gap-3 md:hidden">
             {filteredInvoices.map((invoice) => {
-              const statusStyle = STATUS_COLORS[invoice.paymentStatus] || STATUS_COLORS.Draft
+              const paid = Number(invoice.amountPaid || 0)
+              const remaining = Number(invoice.balanceDue !== undefined ? invoice.balanceDue : Math.max(0, invoice.totalAmount - paid))
 
               return (
                 <div
@@ -436,52 +544,60 @@ export default function InvoicesPage() {
                   onClick={() => setViewingInvoice(invoice)}
                   className="rounded-2xl border border-line bg-surface p-4 shadow-xs space-y-3 cursor-pointer hover:border-slate-300 transition-colors"
                 >
-                  {/* Header Row */}
+                  {/* Primary Row: Invoice # & Customer */}
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <h4 className="text-sm font-extrabold text-primary num">{invoice.invoiceNumber}</h4>
                       <p className="text-xs text-ink font-bold">{invoice.customerName}</p>
                     </div>
 
-                    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${statusStyle}`}>
-                      {invoice.paymentStatus}
-                    </span>
+                    <StatusBadge status={invoice.paymentStatus} size="sm" />
                   </div>
 
-                  {/* Details Subbox */}
-                  <div className="rounded-xl bg-bg p-3 border border-line/60 space-y-1 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-ink-soft">Trip Reference:</span>
+                  {/* Financial Breakdown Box */}
+                  <div className="rounded-xl bg-bg p-3 border border-line/60 space-y-2 text-xs">
+                    <div className="flex items-center justify-between text-ink-soft">
+                      <span>Trip Reference:</span>
                       <span className="font-bold text-ink num">{invoice.tripId || 'Manual'}</span>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-ink-soft">Invoice Date:</span>
+                    <div className="flex items-center justify-between text-ink-soft">
+                      <span>Invoice Date:</span>
                       <span className="font-medium text-ink num">{invoice.invoiceDate}</span>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1 border-t border-line/40">
-                      <span className="font-bold text-ink">Total Amount:</span>
-                      <span className="font-extrabold text-primary text-sm num">{formatINR(invoice.totalAmount)}</span>
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-line/50 text-center">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase text-ink-soft">Total</p>
+                        <p className="font-extrabold text-ink num text-xs">{formatINR(invoice.totalAmount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase text-emerald-700">Paid</p>
+                        <p className="font-extrabold text-emerald-700 num text-xs">{formatINR(paid)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase text-rose-700">Balance</p>
+                        <p className="font-extrabold text-rose-700 num text-xs">{formatINR(remaining)}</p>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Actions Footer */}
+                  {/* Quick Actions Footer */}
                   <div className="flex items-center justify-between pt-1" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => setViewingInvoice(invoice)}
                       className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline cursor-pointer"
                     >
-                      <Eye size={14} /> View & Print
+                      <Printer size={13} /> View & Print
                     </button>
 
                     <div className="flex items-center gap-2">
                       {isAdmin && invoice.paymentStatus !== 'Paid' && (
                         <button
                           onClick={() => setPaymentInvoice(invoice)}
-                          className="rounded-lg bg-emerald-700 px-3 py-1 text-xs font-bold text-white shadow-xs cursor-pointer"
+                          className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-xs cursor-pointer"
                         >
-                          Record Payment
+                          Collect Payment
                         </button>
                       )}
 
@@ -495,7 +611,6 @@ export default function InvoicesPage() {
                       )}
                     </div>
                   </div>
-
                 </div>
               )
             })}
@@ -503,7 +618,7 @@ export default function InvoicesPage() {
         </>
       )}
 
-      {/* MODALS */}
+      {/* 5. Modals & Drawers */}
 
       {/* Auto-Generate Invoice Selection Modal */}
       {showAutoGenerateModal && (
@@ -588,11 +703,11 @@ export default function InvoicesPage() {
         onSuccess={(msg) => showToast(msg)}
       />
 
-      {/* Delete Confirmation */}
+      {/* Delete Confirmation Dialog */}
       {deletingInvoice && (
         <ConfirmDialog
-          title="Delete Invoice?"
-          body={`Are you sure you want to delete invoice "${deletingInvoice.invoiceNumber}"? This action cannot be undone.`}
+          title={`Remove Invoice #${deletingInvoice.invoiceNumber}?`}
+          body={`Are you sure you want to delete invoice "${deletingInvoice.invoiceNumber}" for customer "${deletingInvoice.customerName}"? This financial record will be permanently deleted.`}
           confirmLabel={isDeleting ? 'Deleting...' : 'Delete Invoice'}
           cancelLabel="Cancel"
           destructive={true}

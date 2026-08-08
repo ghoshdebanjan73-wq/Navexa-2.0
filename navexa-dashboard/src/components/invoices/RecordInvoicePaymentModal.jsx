@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, CreditCard, Loader2, IndianRupee, AlertCircle } from 'lucide-react'
-import { recordInvoicePaymentRecord, PAYMENT_METHODS } from '../../data/paymentStore'
+import { recordInvoicePayment, PAYMENT_METHODS } from '../../data/invoiceStore'
 import { formatINR } from '../../data/tripStore'
 import { useUser } from '../../context/UserContext'
 
@@ -52,17 +52,15 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
     setError('')
 
     try {
-      const newPay = recordInvoicePaymentRecord({
-        invoiceId: invoice.id,
-        amount: val,
+      await recordInvoicePayment(invoice.id, {
+        amountPaid: val,
         paymentMethod,
         paymentDate,
         referenceNumber: referenceNumber.trim(),
-        collectedBy: collectedBy.trim() || user?.name || 'Admin',
         notes: notes.trim(),
-      }, user)
+      })
 
-      if (onSuccess) onSuccess(`Payment ${newPay.paymentNumber} of ₹${val.toLocaleString('en-IN')} recorded successfully!`)
+      if (onSuccess) onSuccess(`Payment of ₹${val.toLocaleString('en-IN')} recorded for Invoice ${invoice.invoiceNumber}!`)
       onClose()
     } catch (err) {
       console.error('Error recording invoice payment:', err)
