@@ -94,30 +94,55 @@ export function getRouteFromLocation() {
   return 'Dashboard'
 }
 
+/** Parse route parameters from URL search or hash for browser refresh & back/forward persistence */
+export function getRouteParamsFromLocation() {
+  if (typeof window === 'undefined') return {}
+  const search = window.location.search || ''
+  const hash = window.location.hash || ''
+  
+  const searchParams = new URLSearchParams(search)
+  let hashQuery = ''
+  if (hash.includes('?')) {
+    hashQuery = hash.substring(hash.indexOf('?'))
+  }
+  const hashParams = new URLSearchParams(hashQuery)
+
+  const filterVal = searchParams.get('filter') || hashParams.get('filter') || searchParams.get('statusFilter') || hashParams.get('statusFilter')
+  
+  const params = {}
+  if (filterVal && (filterVal.toLowerCase() === 'needs-assignment' || filterVal === 'Needs Assignment')) {
+    params.Trips = { statusFilter: 'Needs Assignment' }
+  }
+  return params
+}
+
 const RouterContext = createContext(null)
 
 export function RouterProvider({ children }) {
   const [activeRoute, setActiveRoute] = useState(() => getRouteFromLocation())
-  const [routeParams, setRouteParams] = useState({})
+  const [routeParams, setRouteParams] = useState(() => getRouteParamsFromLocation())
 
   // Update URL & document title
-  const syncUrl = useCallback((routeId, replace = false) => {
+  const syncUrl = useCallback((routeId, params = {}, replace = false) => {
     if (typeof window === 'undefined') return
-    const targetPath = ROUTE_PATHS[routeId] || '/'
     const isFileProtocol = window.location.protocol === 'file:'
+    const baseTarget = ROUTE_PATHS[routeId] || '/'
+    const hasNeedsAssignment = params?.statusFilter === 'Needs Assignment' || routeParams?.[routeId]?.statusFilter === 'Needs Assignment'
+    const queryString = hasNeedsAssignment ? '?filter=needs-assignment' : ''
 
     if (isFileProtocol) {
-      const targetHash = `#/${routeId.toLowerCase()}`
+      const targetHash = `#/${routeId.toLowerCase()}${queryString}`
       if (window.location.hash !== targetHash) {
         if (replace) window.location.replace(targetHash)
         else window.location.hash = targetHash
       }
     } else {
-      if (window.location.pathname !== targetPath) {
+      const fullPath = `${baseTarget}${queryString}`
+      if (window.location.pathname + window.location.search !== fullPath) {
         if (replace) {
-          window.history.replaceState({ route: routeId }, '', targetPath)
+          window.history.replaceState({ route: routeId, params }, '', fullPath)
         } else {
-          window.history.pushState({ route: routeId }, '', targetPath)
+          window.history.pushState({ route: routeId, params }, '', fullPath)
         }
       }
     }
@@ -132,7 +157,7 @@ export function RouterProvider({ children }) {
     }
 
     document.title = getTitleForRoute(routeId)
-  }, [])
+  }, [routeParams])
 
   // Public navigate function with optional params (e.g. { statusFilter: 'Needs Assignment' })
   const navigate = useCallback((routeId, params = {}, replace = false) => {
@@ -140,12 +165,13 @@ export function RouterProvider({ children }) {
       replace = params
       params = {}
     }
+    const newParams = params || {}
     setRouteParams(prev => ({
       ...prev,
-      [routeId]: params || {},
+      [routeId]: newParams,
     }))
     setActiveRoute(routeId)
-    syncUrl(routeId, replace)
+    syncUrl(routeId, newParams, replace)
   }, [syncUrl])
 
   const clearRouteParams = useCallback((routeId) => {
@@ -155,13 +181,26 @@ export function RouterProvider({ children }) {
       else return {}
       return next
     })
-  }, [])
+    if (typeof window !== 'undefined') {
+      const targetPath = ROUTE_PATHS[routeId || activeRoute] || '/'
+      const isFileProtocol = window.location.protocol === 'file:'
+      if (isFileProtocol) {
+        window.location.hash = `#/${(routeId || activeRoute).toLowerCase()}`
+      } else {
+        window.history.replaceState({ route: routeId || activeRoute }, '', targetPath)
+      }
+    }
+  }, [activeRoute])
 
   // Sync on initial load & listen to popstate / hashchange (Browser Back/Forward)
   useEffect(() => {
     const handleLocationChange = () => {
       const currentRoute = getRouteFromLocation()
+      const currentParams = getRouteParamsFromLocation()
       setActiveRoute(currentRoute)
+      if (currentParams.Trips) {
+        setRouteParams(prev => ({ ...prev, ...currentParams }))
+      }
       
       const getTitleForRoute = (rId) => {
         if (rId === 'SignIn') return 'Navexa — Sign In'
@@ -175,7 +214,7 @@ export function RouterProvider({ children }) {
     }
 
     // Replace current state so initial page has valid history entry
-    syncUrl(activeRoute, true)
+    syncUrl(activeRoute, routeParams[activeRoute], true)
 
     window.addEventListener('popstate', handleLocationChange)
     window.addEventListener('hashchange', handleLocationChange)
@@ -183,7 +222,7 @@ export function RouterProvider({ children }) {
       window.removeEventListener('popstate', handleLocationChange)
       window.removeEventListener('hashchange', handleLocationChange)
     }
-  }, [activeRoute, syncUrl])
+  }, [activeRoute, routeParams, syncUrl])
 
   return (
     <RouterContext.Provider value={{ activeRoute, routeParams, navigate, setRouteParams, clearRouteParams }}>

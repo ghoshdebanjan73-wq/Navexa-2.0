@@ -6,7 +6,8 @@ import {
 import { useUser } from '../context/UserContext'
 import {
   liveTrips, subscribeTrips, filterAndSortTrips, getNextTripStatus,
-  updateTripStatus, deleteTrip, formatINR, TRIP_STAGES, isTripFinalized
+  updateTripStatus, deleteTrip, formatINR, TRIP_STAGES, isTripFinalized,
+  isTripNeedsAssignment, getTripMissingAssignmentLabel
 } from '../data/tripStore'
 import { liveDrivers, subscribeDrivers } from '../data/driverStore'
 import { liveVehicles, subscribeVehicles } from '../data/vehicleStore'
@@ -616,19 +617,15 @@ export default function TripsPage() {
                             <User size={12} className="shrink-0" />
                             {trip.driverName || 'Unassigned'}
                           </p>
-                          {!isFinalized && (!trip.driverId || trip.driverName === 'Unassigned' || !trip.vehicleId || trip.vehicle === 'Unassigned') && (
+                          {!isFinalized && isTripNeedsAssignment(trip) && (
                             <div className="pt-0.5">
-                              {(!trip.driverId || trip.driverName === 'Unassigned') && (!trip.vehicleId || trip.vehicle === 'Unassigned') ? (
+                              {getTripMissingAssignmentLabel(trip) === 'Driver & Vehicle — Missing' ? (
                                 <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200">
                                   <AlertTriangle size={10} /> Driver & Vehicle — Missing
                                 </span>
-                              ) : (!trip.driverId || trip.driverName === 'Unassigned') ? (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">
-                                  <AlertCircle size={10} /> Driver — Missing
-                                </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">
-                                  <AlertCircle size={10} /> Vehicle — Missing
+                                  <AlertCircle size={10} /> {getTripMissingAssignmentLabel(trip)}
                                 </span>
                               )}
                             </div>

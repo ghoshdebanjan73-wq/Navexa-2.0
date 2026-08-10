@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { AlertTriangle, AlertCircle, CheckCircle2, FileText, Route, Car, ArrowRight, ChevronRight } from 'lucide-react'
 import { liveInvoices, getInvoiceStats, subscribeInvoices } from '../../data/invoiceStore'
-import { liveTrips, subscribeTrips } from '../../data/tripStore'
+import { liveTrips, subscribeTrips, isTripNeedsAssignment } from '../../data/tripStore'
 import { liveVehicles, subscribeVehicles, getMaintenanceAlert, getInsuranceStatus } from '../../data/vehicleStore'
 import { useRouter } from '../../context/RouterContext'
 import { formatINR } from '../../data/tripStore'
@@ -47,10 +47,7 @@ export default function AttentionAlerts({ onNavigate }) {
     }
 
     // 2. Trips Needing Assignment (Booked or Confirmed without Driver or Vehicle)
-    const unassignedTrips = trips.filter(t => 
-      t.status !== 'Completed' && t.status !== 'Cancelled' && 
-      (!t.driverId || t.driverName === 'Unassigned' || !t.vehicleId || t.vehicle === 'Unassigned')
-    )
+    const unassignedTrips = trips.filter(isTripNeedsAssignment)
     if (unassignedTrips.length > 0) {
       items.push({
         id: 'unassigned-trips',

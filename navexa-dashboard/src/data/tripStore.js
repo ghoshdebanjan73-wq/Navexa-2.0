@@ -204,6 +204,26 @@ export function getNextTripStatus(currentStatus) {
   }
 }
 
+/** Helper to check if a trip needs driver or vehicle assignment */
+export function isTripNeedsAssignment(t) {
+  if (!t || t.status === 'Completed' || t.status === 'Cancelled') return false
+  const hasDriver = Boolean(t.driverId && t.driverId !== 'Unassigned' && t.driverName && t.driverName !== 'Unassigned')
+  const hasVehicle = Boolean(t.vehicleId && t.vehicleId !== 'Unassigned' && t.vehicle && t.vehicle !== 'Unassigned')
+  return !hasDriver || !hasVehicle
+}
+
+/** Get specific missing assignment detail badge text */
+export function getTripMissingAssignmentLabel(t) {
+  if (!t || t.status === 'Completed' || t.status === 'Cancelled') return null
+  const hasDriver = Boolean(t.driverId && t.driverId !== 'Unassigned' && t.driverName && t.driverName !== 'Unassigned')
+  const hasVehicle = Boolean(t.vehicleId && t.vehicleId !== 'Unassigned' && t.vehicle && t.vehicle !== 'Unassigned')
+
+  if (!hasDriver && !hasVehicle) return 'Driver & Vehicle — Missing'
+  if (!hasDriver) return 'Driver — Missing'
+  if (!hasVehicle) return 'Vehicle — Missing'
+  return null
+}
+
 /** Advanced Filter & Sort Trips */
 export function filterAndSortTrips(tripsList, { search = '', status = 'All', driverId = 'All', vehicleId = 'All', tripType = 'All', tripDate = '', sortBy = 'Newest' }) {
   let result = [...tripsList]
@@ -213,10 +233,7 @@ export function filterAndSortTrips(tripsList, { search = '', status = 'All', dri
     if (status === 'Active') {
       result = result.filter(t => ['Started', 'Passenger Picked Up', 'Ongoing', 'Vehicle Assigned'].includes(t.status))
     } else if (status === 'Needs Assignment') {
-      result = result.filter(t => 
-        t.status !== 'Completed' && t.status !== 'Cancelled' && 
-        (!t.driverId || t.driverName === 'Unassigned' || !t.vehicleId || t.vehicle === 'Unassigned')
-      )
+      result = result.filter(isTripNeedsAssignment)
     } else {
       result = result.filter(t => t.status === status)
     }
