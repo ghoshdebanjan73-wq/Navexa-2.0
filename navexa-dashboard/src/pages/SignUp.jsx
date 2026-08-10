@@ -46,6 +46,38 @@ export default function SignUpPage() {
     return errs
   }
 
+  const [isResending, setIsResending] = useState(false)
+  const [resendFeedback, setResendFeedback] = useState(null)
+
+  const handleResendEmail = async () => {
+    if (isResending || !email.trim()) return
+    setIsResending(true)
+    setResendFeedback(null)
+
+    try {
+      const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+        options: {
+          emailRedirectTo: redirectUrl,
+        }
+      })
+
+      if (error) {
+        console.error('Supabase resend confirmation email error:', error)
+        setResendFeedback({ type: 'error', text: error.message || 'Could not resend confirmation email. Please try again later.' })
+      } else {
+        setResendFeedback({ type: 'success', text: 'Confirmation email resent! Please check your Inbox, Spam, and Promotions folders.' })
+      }
+    } catch (err) {
+      console.error('Resend confirmation email exception:', err)
+      setResendFeedback({ type: 'error', text: 'An unexpected error occurred while resending the email.' })
+    } finally {
+      setIsResending(false)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (isSubmitting) return
@@ -63,10 +95,13 @@ export default function SignUpPage() {
 
     try {
       const full = `${firstName.trim()} ${lastName.trim()}`.trim()
+      const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined
+
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
             first_name: firstName.trim(),
             last_name: lastName.trim(),
@@ -122,18 +157,60 @@ export default function SignUpPage() {
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mx-auto">
             <Mail size={24} strokeWidth={2} />
           </div>
+
           <div>
-            <h3 className="text-xl font-bold text-ink">Check your email</h3>
+            <h3 className="text-xl font-extrabold text-ink">Check your email</h3>
             <p className="mt-2 text-xs sm:text-sm text-ink-soft leading-relaxed">
-              We sent a confirmation link to <span className="font-semibold text-ink">{email}</span>. Please click the link to confirm your email and sign in.
+              We sent a confirmation link to <strong className="text-ink">{email}</strong>. Please click the link in your email to verify your account and sign in.
             </p>
           </div>
-          <button
-            onClick={() => navigate('SignIn')}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-primary-600 transition-colors cursor-pointer"
-          >
-            <ChevronLeft size={16} /> Return to Sign In
-          </button>
+
+          {/* Delivery guidance */}
+          <div className="rounded-xl border border-line bg-bg p-3.5 text-left text-xs text-ink-soft space-y-1.5">
+            <p className="font-bold text-ink flex items-center gap-1.5">
+              <CheckCircle2 size={14} className="text-emerald-600 shrink-0" /> Expected Delivery:
+            </p>
+            <p className="text-[11px] leading-relaxed">
+              If you don't see the email immediately, please check your <strong>Spam</strong>, <strong>Junk</strong>, <strong>Promotions</strong>, or <strong>All Mail</strong> folders.
+            </p>
+          </div>
+
+          {/* Feedback message banner */}
+          {resendFeedback && (
+            <div className={`rounded-xl p-3 text-xs font-semibold animate-fadeIn ${
+              resendFeedback.type === 'error' ? 'bg-rose-50 border border-rose-200 text-rose-700' : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+            }`}>
+              {resendFeedback.text}
+            </div>
+          )}
+
+          {/* Resend button & Return to sign in */}
+          <div className="space-y-2.5 pt-1">
+            <button
+              type="button"
+              onClick={handleResendEmail}
+              disabled={isResending}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-bg px-4 py-2.5 text-xs sm:text-sm font-bold text-ink hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {isResending ? (
+                <>
+                  <Loader2 size={16} className="animate-spin text-primary" /> Sending Confirmation Email...
+                </>
+              ) : (
+                <>
+                  <Mail size={16} /> Resend Confirmation Email
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('SignIn')}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-primary-600 transition-colors cursor-pointer"
+            >
+              <ChevronLeft size={16} /> Return to Sign In
+            </button>
+          </div>
         </div>
       </div>
     )
