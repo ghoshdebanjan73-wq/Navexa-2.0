@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Eye, EyeOff, Loader2, Mail, CheckCircle2, ChevronLeft, Route } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase, getAuthRedirectUrl } from '../lib/supabase'
 import { useRouter } from '../context/RouterContext'
 
 export default function SignUpPage() {
@@ -55,11 +55,12 @@ export default function SignUpPage() {
     setResendFeedback(null)
 
     try {
-      const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined
+      const redirectUrl = getAuthRedirectUrl()
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email.trim(),
         options: {
+          redirectTo: redirectUrl,
           emailRedirectTo: redirectUrl,
         }
       })
@@ -95,12 +96,13 @@ export default function SignUpPage() {
 
     try {
       const full = `${firstName.trim()} ${lastName.trim()}`.trim()
-      const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined
+      const redirectUrl = getAuthRedirectUrl()
 
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
+          redirectTo: redirectUrl,
           emailRedirectTo: redirectUrl,
           data: {
             first_name: firstName.trim(),

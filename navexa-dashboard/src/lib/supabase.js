@@ -9,7 +9,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   auth: {
-    persistSession: false,
-    autoRefreshToken: false,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
   }
 })
+
+/**
+ * Returns the current application origin for auth confirmation redirects.
+ * Automatically handles local development (localhost:5173) vs Vercel production deployment.
+ */
+export function getAuthRedirectUrl() {
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    return window.location.origin.replace(/\/$/, '')
+  }
+  return (import.meta.env.VITE_SITE_URL || '').replace(/\/$/, '')
+}

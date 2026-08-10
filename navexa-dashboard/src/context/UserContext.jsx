@@ -148,16 +148,15 @@ export function UserProvider({ children }) {
 
     // 2. Listen to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') {
-        // Clear all local caches on fresh sign-in to avoid stale cross-session data
-        localStorage.removeItem('navexa_trips')
-        localStorage.removeItem('navexa_customers')
-        localStorage.removeItem('navexa_vehicles')
-        localStorage.removeItem('navexa_payments')
-        localStorage.removeItem('navexa_maintenance')
-        localStorage.removeItem('navexa_invoices')
-        localStorage.removeItem('navexa_finance_transactions')
-        localStorage.removeItem('navexa_audit_logs')
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        // Clean URL fragment hash if redirect contained access_token or confirmation parameters
+        if (typeof window !== 'undefined' && window.location.hash && (window.location.hash.includes('access_token') || window.location.hash.includes('type=signup'))) {
+          try {
+            window.history.replaceState(null, '', window.location.pathname)
+          } catch (e) {
+            // Ignore history mutation errors if blocked by browser policy
+          }
+        }
       }
       handleUserSession(session)
     })
