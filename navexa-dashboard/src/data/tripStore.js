@@ -212,6 +212,11 @@ export function filterAndSortTrips(tripsList, { search = '', status = 'All', dri
   if (status !== 'All') {
     if (status === 'Active') {
       result = result.filter(t => ['Started', 'Passenger Picked Up', 'Ongoing', 'Vehicle Assigned'].includes(t.status))
+    } else if (status === 'Needs Assignment') {
+      result = result.filter(t => 
+        t.status !== 'Completed' && t.status !== 'Cancelled' && 
+        (!t.driverId || t.driverName === 'Unassigned' || !t.vehicleId || t.vehicle === 'Unassigned')
+      )
     } else {
       result = result.filter(t => t.status === status)
     }

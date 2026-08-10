@@ -48,7 +48,8 @@ export default function AttentionAlerts({ onNavigate }) {
 
     // 2. Trips Needing Assignment (Booked or Confirmed without Driver or Vehicle)
     const unassignedTrips = trips.filter(t => 
-      t.status !== 'Completed' && t.status !== 'Cancelled' && (!t.driver || t.driver === 'Unassigned' || !t.vehicle || t.vehicle === 'Unassigned')
+      t.status !== 'Completed' && t.status !== 'Cancelled' && 
+      (!t.driverId || t.driverName === 'Unassigned' || !t.vehicleId || t.vehicle === 'Unassigned')
     )
     if (unassignedTrips.length > 0) {
       items.push({
@@ -59,6 +60,7 @@ export default function AttentionAlerts({ onNavigate }) {
         description: `Assign vehicles and drivers to ensure smooth operations.`,
         actionLabel: 'Assign Operations',
         route: 'Trips',
+        params: { statusFilter: 'Needs Assignment' },
       })
     }
 
@@ -73,15 +75,18 @@ export default function AttentionAlerts({ onNavigate }) {
         description: `Check repair status or update service completion logs.`,
         actionLabel: 'Manage Fleet',
         route: 'Vehicles',
+        params: { statusFilter: 'Maintenance' },
       })
     }
 
     return items
   }, [invoices, trips, vehicles])
 
-  const handleAction = (route) => {
-    if (onNavigate) onNavigate(route)
-    else navigate(route)
+  const handleAction = (item) => {
+    const route = typeof item === 'string' ? item : item.route
+    const params = typeof item === 'object' ? item.params : {}
+    if (onNavigate) onNavigate(route, params)
+    else navigate(route, params)
   }
 
   // If no items require urgent attention

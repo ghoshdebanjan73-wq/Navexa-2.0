@@ -98,6 +98,7 @@ const RouterContext = createContext(null)
 
 export function RouterProvider({ children }) {
   const [activeRoute, setActiveRoute] = useState(() => getRouteFromLocation())
+  const [routeParams, setRouteParams] = useState({})
 
   // Update URL & document title
   const syncUrl = useCallback((routeId, replace = false) => {
@@ -133,11 +134,28 @@ export function RouterProvider({ children }) {
     document.title = getTitleForRoute(routeId)
   }, [])
 
-  // Public navigate function
-  const navigate = useCallback((routeId, replace = false) => {
+  // Public navigate function with optional params (e.g. { statusFilter: 'Needs Assignment' })
+  const navigate = useCallback((routeId, params = {}, replace = false) => {
+    if (typeof params === 'boolean') {
+      replace = params
+      params = {}
+    }
+    setRouteParams(prev => ({
+      ...prev,
+      [routeId]: params || {},
+    }))
     setActiveRoute(routeId)
     syncUrl(routeId, replace)
   }, [syncUrl])
+
+  const clearRouteParams = useCallback((routeId) => {
+    setRouteParams(prev => {
+      const next = { ...prev }
+      if (routeId) delete next[routeId]
+      else return {}
+      return next
+    })
+  }, [])
 
   // Sync on initial load & listen to popstate / hashchange (Browser Back/Forward)
   useEffect(() => {
@@ -168,7 +186,7 @@ export function RouterProvider({ children }) {
   }, [activeRoute, syncUrl])
 
   return (
-    <RouterContext.Provider value={{ activeRoute, navigate }}>
+    <RouterContext.Provider value={{ activeRoute, routeParams, navigate, setRouteParams, clearRouteParams }}>
       {children}
     </RouterContext.Provider>
   )
@@ -177,7 +195,7 @@ export function RouterProvider({ children }) {
 export function useRouter() {
   const context = useContext(RouterContext)
   if (!context) {
-    return { activeRoute: 'Dashboard', navigate: () => {} }
+    return { activeRoute: 'Dashboard', routeParams: {}, navigate: () => {}, clearRouteParams: () => {} }
   }
   return context
 }

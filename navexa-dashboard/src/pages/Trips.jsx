@@ -12,6 +12,7 @@ import { liveDrivers, subscribeDrivers } from '../data/driverStore'
 import { liveVehicles, subscribeVehicles } from '../data/vehicleStore'
 import { liveCustomers, subscribeCustomers } from '../data/customerStore'
 
+import { useRouter } from '../context/RouterContext'
 import AddTripModal from '../components/trips/AddTripModal'
 import EditTripModal from '../components/trips/EditTripModal'
 import TripDetailPanel from '../components/trips/TripDetailPanel'
@@ -24,6 +25,7 @@ import PageHeader from '../components/ui/PageHeader'
 
 export default function TripsPage() {
   const { user } = useUser()
+  const { routeParams, clearRouteParams } = useRouter()
   const isAdmin = user?.role !== 'Staff'
 
   // Data Store State
@@ -34,8 +36,14 @@ export default function TripsPage() {
 
   // Filters & Search
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All')
+  const [statusFilter, setStatusFilter] = useState(routeParams?.Trips?.statusFilter || 'All')
   const [typeFilter, setTypeFilter] = useState('All')
+
+  useEffect(() => {
+    if (routeParams?.Trips?.statusFilter) {
+      setStatusFilter(routeParams.Trips.statusFilter)
+    }
+  }, [routeParams?.Trips?.statusFilter])
   const [driverFilter, setDriverFilter] = useState('All')
   const [vehicleFilter, setVehicleFilter] = useState('All')
   const [customerFilter, setCustomerFilter] = useState('All')
@@ -281,6 +289,34 @@ export default function TripsPage() {
           </div>
         </button>
       </div>
+
+      {/* Contextual Attention Filter Banner */}
+      {statusFilter === 'Needs Assignment' && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50/80 p-4 shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white font-extrabold shadow-2xs">
+              <Route size={18} />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-extrabold text-amber-950">
+                Filtered View: Trips Needing Driver/Vehicle Assignment ({filteredTrips.length})
+              </h3>
+              <p className="text-[11px] font-semibold text-amber-800 leading-snug">
+                Prioritizing operational urgency. Assign driver and vehicle directly to resolve each trip.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setStatusFilter('All')
+              clearRouteParams('Trips')
+            }}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-300 bg-surface px-3 py-1.5 text-xs font-bold text-ink hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+          >
+            <X size={14} /> Clear Filter
+          </button>
+        </div>
+      )}
 
       {/* 3. Search, Filter & Sort Controls Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-line bg-surface p-3.5 shadow-xs">
@@ -569,15 +605,32 @@ export default function TripsPage() {
 
                       {/* Vehicle & Driver */}
                       <td className="px-4 py-3.5">
-                        <div className="space-y-0.5 text-xs">
+                        <div className="space-y-1 text-xs">
                           <p className="font-semibold text-ink flex items-center gap-1">
                             <Car size={13} className="text-primary shrink-0" />
-                            {trip.vehicle} {trip.vehicleReg ? `(${trip.vehicleReg})` : ''}
+                            {trip.vehicle || 'Unassigned'} {trip.vehicleReg ? `(${trip.vehicleReg})` : ''}
                           </p>
                           <p className="text-[10px] text-ink-soft flex items-center gap-1">
                             <User size={12} className="shrink-0" />
                             {trip.driverName || 'Unassigned'}
                           </p>
+                          {!isFinalized && (!trip.driverId || trip.driverName === 'Unassigned' || !trip.vehicleId || trip.vehicle === 'Unassigned') && (
+                            <div className="pt-0.5">
+                              {(!trip.driverId || trip.driverName === 'Unassigned') && (!trip.vehicleId || trip.vehicle === 'Unassigned') ? (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200">
+                                  <AlertTriangle size={10} /> Driver & Vehicle — Missing
+                                </span>
+                              ) : (!trip.driverId || trip.driverName === 'Unassigned') ? (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">
+                                  <AlertCircle size={10} /> Driver — Missing
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">
+                                  <AlertCircle size={10} /> Vehicle — Missing
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
 
