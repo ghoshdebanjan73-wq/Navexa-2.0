@@ -154,7 +154,7 @@ export default function AttentionAlerts({ onNavigate }) {
               </div>
 
               <button
-                onClick={() => handleAction(item.route)}
+                onClick={() => handleAction(item)}
                 className={`self-end sm:self-auto inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold shadow-2xs transition-colors cursor-pointer shrink-0 ${btnStyle}`}
               >
                 <span>{item.actionLabel}</span>

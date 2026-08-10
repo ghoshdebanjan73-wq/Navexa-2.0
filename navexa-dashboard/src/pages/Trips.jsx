@@ -41,9 +41,14 @@ export default function TripsPage() {
   const [statusFilter, setStatusFilter] = useState(routeParams?.Trips?.statusFilter || 'All')
   const [typeFilter, setTypeFilter] = useState('All')
 
+  // Sync statusFilter whenever the router params change (e.g. navigating from Dashboard CTA or browser back)
   useEffect(() => {
-    if (routeParams?.Trips?.statusFilter) {
-      setStatusFilter(routeParams.Trips.statusFilter)
+    const incomingFilter = routeParams?.Trips?.statusFilter
+    if (incomingFilter) {
+      setStatusFilter(incomingFilter)
+    } else if (routeParams?.Trips !== undefined && !incomingFilter) {
+      // Trips key exists but no statusFilter — reset to All
+      setStatusFilter('All')
     }
   }, [routeParams?.Trips?.statusFilter])
   const [driverFilter, setDriverFilter] = useState('All')

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 
 const ROUTE_PATHS = {
   SignIn:    '/signin',
@@ -41,31 +41,43 @@ const PATH_TO_ROUTE = {
   '/drivers':   'Drivers',
 }
 
+/** Extract just the path segment from a hash string (strips query params) */
+function getHashPath(hash) {
+  // hash looks like: "#/trips?filter=needs-assignment" or "#/trips"
+  // strip leading #/ or #
+  const stripped = hash.replace(/^#\/?/, '')
+  // strip query string
+  const qIndex = stripped.indexOf('?')
+  return qIndex >= 0 ? stripped.substring(0, qIndex) : stripped
+}
+
 /** Get route ID from window.location.pathname or hash */
 export function getRouteFromLocation() {
   if (typeof window === 'undefined') return 'Dashboard'
-  
-  const pathname = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/'
-  const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase()
 
-  // Match Hash first if present
-  if (hash) {
-    if (hash === 'signin') return 'SignIn'
-    if (hash === 'signup') return 'SignUp'
-    if (hash === 'trips') return 'Trips'
-    if (hash === 'finance') return 'Finance'
-    if (hash === 'reports') return 'Reports'
-    if (hash === 'notifications') return 'Notifications'
-    if (hash === 'search') return 'Search'
-    if (hash === 'activity' || hash === 'audit-logs') return 'Activity'
-    if (hash === 'customers') return 'Customers'
-    if (hash === 'vehicles') return 'Vehicles'
-    if (hash === 'users') return 'Users'
-    if (hash === 'profile') return 'Profile'
-    if (hash === 'settings') return 'Settings'
-    if (hash === 'companyprofile' || hash === 'company-profile') return 'CompanyProfile'
-    if (hash === 'drivers') return 'Drivers'
-    if (hash === 'dashboard' || hash === '') return 'Dashboard'
+  const pathname = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/'
+  const rawHash = window.location.hash
+  const hashPath = getHashPath(rawHash).toLowerCase()
+
+  // Match Hash path first
+  if (hashPath) {
+    if (hashPath === 'signin') return 'SignIn'
+    if (hashPath === 'signup') return 'SignUp'
+    if (hashPath === 'trips') return 'Trips'
+    if (hashPath === 'finance') return 'Finance'
+    if (hashPath === 'reports') return 'Reports'
+    if (hashPath === 'notifications') return 'Notifications'
+    if (hashPath === 'search') return 'Search'
+    if (hashPath === 'activity' || hashPath === 'audit-logs') return 'Activity'
+    if (hashPath === 'customers') return 'Customers'
+    if (hashPath === 'vehicles') return 'Vehicles'
+    if (hashPath === 'users') return 'Users'
+    if (hashPath === 'profile') return 'Profile'
+    if (hashPath === 'settings') return 'Settings'
+    if (hashPath === 'companyprofile' || hashPath === 'company-profile') return 'CompanyProfile'
+    if (hashPath === 'drivers') return 'Drivers'
+    if (hashPath === 'dashboard' || hashPath === '') return 'Dashboard'
+    if (hashPath === 'invoices') return 'Invoices'
   }
 
   // Match Pathname
@@ -94,21 +106,29 @@ export function getRouteFromLocation() {
   return 'Dashboard'
 }
 
-/** Parse route parameters from URL search or hash for browser refresh & back/forward persistence */
+/** Parse route parameters (filter=needs-assignment) from the current URL */
 export function getRouteParamsFromLocation() {
   if (typeof window === 'undefined') return {}
-  const search = window.location.search || ''
-  const hash = window.location.hash || ''
-  
-  const searchParams = new URLSearchParams(search)
-  let hashQuery = ''
-  if (hash.includes('?')) {
-    hashQuery = hash.substring(hash.indexOf('?'))
-  }
-  const hashParams = new URLSearchParams(hashQuery)
 
-  const filterVal = searchParams.get('filter') || hashParams.get('filter') || searchParams.get('statusFilter') || hashParams.get('statusFilter')
-  
+  // Support both search params (/trips?filter=...) and hash params (#/trips?filter=...)
+  const rawSearch = window.location.search || ''
+  const rawHash = window.location.hash || ''
+
+  let filterVal = null
+
+  // Check search params first
+  if (rawSearch) {
+    const sp = new URLSearchParams(rawSearch)
+    filterVal = sp.get('filter') || sp.get('statusFilter')
+  }
+
+  // If not found, check hash query params (e.g. #/trips?filter=needs-assignment)
+  if (!filterVal && rawHash.includes('?')) {
+    const hashQuery = rawHash.substring(rawHash.indexOf('?'))
+    const hp = new URLSearchParams(hashQuery)
+    filterVal = hp.get('filter') || hp.get('statusFilter')
+  }
+
   const params = {}
   if (filterVal && (filterVal.toLowerCase() === 'needs-assignment' || filterVal === 'Needs Assignment')) {
     params.Trips = { statusFilter: 'Needs Assignment' }
@@ -116,105 +136,114 @@ export function getRouteParamsFromLocation() {
   return params
 }
 
+/** Build the URL string to use for a given route + params */
+function buildUrl(routeId, params) {
+  const isFileProtocol = typeof window !== 'undefined' && window.location.protocol === 'file:'
+  const basePath = ROUTE_PATHS[routeId] || '/'
+  const needsAssignment = params?.statusFilter === 'Needs Assignment'
+  const query = needsAssignment ? '?filter=needs-assignment' : ''
+
+  if (isFileProtocol) {
+    return `#/${routeId.toLowerCase()}${query}`
+  }
+  return `${basePath}${query}`
+}
+
+function getTitle(routeId) {
+  if (routeId === 'SignIn') return 'Navexa — Sign In'
+  if (routeId === 'SignUp') return 'Navexa — Sign Up'
+  if (routeId === 'CompanyProfile') return 'Navexa — Company Profile'
+  if (routeId === 'Drivers') return 'Navexa — Drivers'
+  if (routeId === 'Dashboard') return 'Navexa — Dashboard'
+  return `Navexa — ${routeId}`
+}
+
 const RouterContext = createContext(null)
 
 export function RouterProvider({ children }) {
   const [activeRoute, setActiveRoute] = useState(() => getRouteFromLocation())
+  // routeParams is keyed by routeId, e.g. { Trips: { statusFilter: 'Needs Assignment' } }
   const [routeParams, setRouteParams] = useState(() => getRouteParamsFromLocation())
 
-  // Update URL & document title
-  const syncUrl = useCallback((routeId, params = {}, replace = false) => {
+  // Use a ref so syncUrl always reads fresh routeParams without being recreated on every param change
+  const routeParamsRef = useRef(routeParams)
+  useEffect(() => { routeParamsRef.current = routeParams }, [routeParams])
+
+  const activeRouteRef = useRef(activeRoute)
+  useEffect(() => { activeRouteRef.current = activeRoute }, [activeRoute])
+
+  /** Push/replace a URL for a given route + params */
+  const syncUrl = useCallback((routeId, params, replace = false) => {
     if (typeof window === 'undefined') return
     const isFileProtocol = window.location.protocol === 'file:'
-    const baseTarget = ROUTE_PATHS[routeId] || '/'
-    const hasNeedsAssignment = params?.statusFilter === 'Needs Assignment' || routeParams?.[routeId]?.statusFilter === 'Needs Assignment'
-    const queryString = hasNeedsAssignment ? '?filter=needs-assignment' : ''
+    const url = buildUrl(routeId, params)
 
     if (isFileProtocol) {
-      const targetHash = `#/${routeId.toLowerCase()}${queryString}`
-      if (window.location.hash !== targetHash) {
-        if (replace) window.location.replace(targetHash)
-        else window.location.hash = targetHash
+      if (window.location.hash !== url) {
+        if (replace) window.location.replace(url)
+        else window.location.hash = url
       }
     } else {
-      const fullPath = `${baseTarget}${queryString}`
-      if (window.location.pathname + window.location.search !== fullPath) {
+      const current = window.location.pathname + window.location.search
+      if (current !== url) {
         if (replace) {
-          window.history.replaceState({ route: routeId, params }, '', fullPath)
+          window.history.replaceState({ route: routeId, params }, '', url)
         } else {
-          window.history.pushState({ route: routeId, params }, '', fullPath)
+          window.history.pushState({ route: routeId, params }, '', url)
         }
       }
     }
 
-    const getTitleForRoute = (rId) => {
-      if (rId === 'SignIn') return 'Navexa — Sign In'
-      if (rId === 'SignUp') return 'Navexa — Sign Up'
-      if (rId === 'CompanyProfile') return 'Navexa — Company Profile'
-      if (rId === 'Drivers') return 'Navexa — Drivers'
-      if (rId === 'Dashboard') return 'Navexa — Dashboard'
-      return `Navexa — ${rId}`
-    }
+    document.title = getTitle(routeId)
+  }, []) // no dependencies — reads params directly from argument, never from closure
 
-    document.title = getTitleForRoute(routeId)
-  }, [routeParams])
-
-  // Public navigate function with optional params (e.g. { statusFilter: 'Needs Assignment' })
+  /** Navigate to a route with optional params */
   const navigate = useCallback((routeId, params = {}, replace = false) => {
     if (typeof params === 'boolean') {
       replace = params
       params = {}
     }
     const newParams = params || {}
-    setRouteParams(prev => ({
-      ...prev,
-      [routeId]: newParams,
-    }))
+    setRouteParams(prev => ({ ...prev, [routeId]: newParams }))
     setActiveRoute(routeId)
+    // Pass params directly — avoids stale-closure reading old routeParams
     syncUrl(routeId, newParams, replace)
   }, [syncUrl])
 
+  /** Clear params for a route (e.g. when user clicks "Clear Filter") */
   const clearRouteParams = useCallback((routeId) => {
+    const targetRoute = routeId || activeRouteRef.current
     setRouteParams(prev => {
       const next = { ...prev }
-      if (routeId) delete next[routeId]
-      else return {}
+      delete next[targetRoute]
       return next
     })
-    if (typeof window !== 'undefined') {
-      const targetPath = ROUTE_PATHS[routeId || activeRoute] || '/'
-      const isFileProtocol = window.location.protocol === 'file:'
-      if (isFileProtocol) {
-        window.location.hash = `#/${(routeId || activeRoute).toLowerCase()}`
-      } else {
-        window.history.replaceState({ route: routeId || activeRoute }, '', targetPath)
-      }
-    }
-  }, [activeRoute])
+    // Update URL to clean path without query string
+    syncUrl(targetRoute, {}, true)
+  }, [syncUrl])
 
-  // Sync on initial load & listen to popstate / hashchange (Browser Back/Forward)
+  // Sync URL on initial mount and listen for browser back/forward
   useEffect(() => {
+    // Replace initial history entry with a valid state
+    syncUrl(activeRoute, routeParams[activeRoute] || {}, true)
+
     const handleLocationChange = () => {
       const currentRoute = getRouteFromLocation()
       const currentParams = getRouteParamsFromLocation()
       setActiveRoute(currentRoute)
-      if (currentParams.Trips) {
+      // Merge any filter params decoded from the URL (handles browser back/forward + refresh)
+      if (Object.keys(currentParams).length > 0) {
         setRouteParams(prev => ({ ...prev, ...currentParams }))
+      } else if (currentRoute === 'Trips') {
+        // Navigated to /trips without filter param → clear the Trips filter
+        setRouteParams(prev => {
+          const next = { ...prev }
+          delete next.Trips
+          return next
+        })
       }
-      
-      const getTitleForRoute = (rId) => {
-        if (rId === 'SignIn') return 'Navexa — Sign In'
-        if (rId === 'SignUp') return 'Navexa — Sign Up'
-        if (rId === 'CompanyProfile') return 'Navexa — Company Profile'
-        if (rId === 'Drivers') return 'Navexa — Drivers'
-        if (rId === 'Dashboard') return 'Navexa — Dashboard'
-        return `Navexa — ${rId}`
-      }
-      document.title = getTitleForRoute(currentRoute)
+      document.title = getTitle(currentRoute)
     }
-
-    // Replace current state so initial page has valid history entry
-    syncUrl(activeRoute, routeParams[activeRoute], true)
 
     window.addEventListener('popstate', handleLocationChange)
     window.addEventListener('hashchange', handleLocationChange)
@@ -222,7 +251,8 @@ export function RouterProvider({ children }) {
       window.removeEventListener('popstate', handleLocationChange)
       window.removeEventListener('hashchange', handleLocationChange)
     }
-  }, [activeRoute, routeParams, syncUrl])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Run once on mount only
 
   return (
     <RouterContext.Provider value={{ activeRoute, routeParams, navigate, setRouteParams, clearRouteParams }}>
@@ -234,7 +264,7 @@ export function RouterProvider({ children }) {
 export function useRouter() {
   const context = useContext(RouterContext)
   if (!context) {
-    return { activeRoute: 'Dashboard', routeParams: {}, navigate: () => {}, clearRouteParams: () => {} }
+    return { activeRoute: 'Dashboard', routeParams: {}, navigate: () => {}, clearRouteParams: () => {}, setRouteParams: () => {} }
   }
   return context
 }
