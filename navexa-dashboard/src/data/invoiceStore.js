@@ -379,7 +379,7 @@ export async function createInvoice(payload, userId) {
 }
 
 /** Record or update invoice payment */
-export async function recordInvoicePayment(invoiceId, { amountPaid, paymentMethod, paymentDate, referenceNumber, notes }) {
+export async function recordInvoicePayment(invoiceId, { amountPaid, paymentMethod, paymentDate, referenceNumber, collectedBy, notes }, userName = 'Admin') {
   const idx = liveInvoices.findIndex(inv => inv.id === invoiceId)
   if (idx === -1) throw new Error('Invoice not found.')
 
@@ -391,26 +391,37 @@ export async function recordInvoicePayment(invoiceId, { amountPaid, paymentMetho
 
   const alreadyPaid = Number(inv.amountPaid || 0)
   const totalAmount = Number(inv.totalAmount || 0)
-  const updatedAmountPaid = alreadyPaid + paymentAmount
+  const currentBalance = Number(inv.balanceDue !== undefined ? inv.balanceDue : Math.max(0, totalAmount - alreadyPaid))
+
+  if (paymentAmount > currentBalance + 0.01) {
+    throw new Error(`Payment cannot exceed the remaining balance of ₹${currentBalance.toLocaleString('en-IN')}.`)
+  }
+
+  const updatedAmountPaid = Math.min(totalAmount, alreadyPaid + paymentAmount)
   const updatedBalance = Math.max(0, totalAmount - updatedAmountPaid)
 
   let updatedStatus = 'Partially Paid'
-  if (updatedAmountPaid >= totalAmount) {
+  if (updatedBalance <= 0) {
     updatedStatus = 'Paid'
   }
 
+  const existingPayments = Array.isArray(inv.payments) ? inv.payments : []
+  const collector = collectedBy || userName || 'Admin'
+
   const paymentRecord = {
     id: `PAY-${invoiceId}-${Date.now()}`,
+    paymentNumber: `Payment #${existingPayments.length + 1}`,
     date: paymentDate || new Date().toISOString().split('T')[0],
+    paymentDate: paymentDate || new Date().toISOString().split('T')[0],
     time: new Date().toTimeString().slice(0, 5),
     amount: paymentAmount,
     paymentMethod: paymentMethod || 'Cash',
     referenceNumber: referenceNumber || '',
     notes: notes || '',
-    recordedBy: 'Dispatcher',
+    recordedBy: collector,
+    collectedBy: collector,
   }
 
-  const existingPayments = Array.isArray(inv.payments) ? inv.payments : []
   const updatedPayments = [paymentRecord, ...existingPayments]
 
   const updatedInvoice = {
@@ -422,15 +433,14 @@ export async function recordInvoicePayment(invoiceId, { amountPaid, paymentMetho
     paymentDate: paymentDate || new Date().toISOString().split('T')[0],
     referenceNumber: referenceNumber || inv.referenceNumber || '',
     payments: updatedPayments,
-    notes: notes ? `${inv.notes || ''}\n[Payment recorded: ₹${paymentAmount}]`.trim() : (inv.notes || ''),
   }
 
   liveInvoices[idx] = updatedInvoice
   notify()
 
-  // Log single transaction for Finance Store
+  // 1. Log Income in Finance Store
   addTransaction({
-    id: `PAY-${invoiceId}-${Date.now()}`,
+    id: paymentRecord.id,
     type: 'Income',
     category: 'Invoice Payment',
     amount: paymentAmount,
@@ -440,8 +450,10 @@ export async function recordInvoicePayment(invoiceId, { amountPaid, paymentMetho
     reference: referenceNumber || inv.invoiceNumber,
     description: `Payment received for Invoice ${inv.invoiceNumber} (${inv.customerName})`,
     paymentMethod: paymentMethod || 'Cash',
+    createdBy: collector,
   })
 
+  // 2. Persist to Supabase `invoices` table
   try {
     const { error } = await supabase
       .from('invoices')
@@ -453,13 +465,26 @@ export async function recordInvoicePayment(invoiceId, { amountPaid, paymentMetho
         payment_date: updatedInvoice.paymentDate,
         reference_number: updatedInvoice.referenceNumber,
         payments: updatedInvoice.payments,
-        notes: updatedInvoice.notes,
       })
       .eq('id', invoiceId)
 
     if (error) console.error('Error updating invoice payment in Supabase:', error)
   } catch (err) {
     console.error('Failed to update invoice payment in cloud:', err)
+  }
+
+  // 3. Persist to Supabase `payments` table
+  try {
+    await supabase.from('payments').upsert({
+      id: paymentRecord.id,
+      trip_id: inv.tripId || null,
+      amount: paymentAmount,
+      payment_date: paymentRecord.date,
+      payment_method: paymentRecord.paymentMethod,
+      notes: notes || `Invoice Payment: ${inv.invoiceNumber}`,
+    })
+  } catch (err) {
+    console.warn('Supabase payments table insert fallback:', err)
   }
 
   return updatedInvoice
