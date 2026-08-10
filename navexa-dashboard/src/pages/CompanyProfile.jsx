@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Building2, User, Phone, Mail, FileText, MapPin, Globe,
-  Coins, Clock, Sliders, Settings, Upload, X, Loader2, CheckCircle2
+  Coins, Clock, Sliders, Settings, Upload, X, Loader2, CheckCircle2, Search, Filter
 } from 'lucide-react'
 import { useUser } from '../context/UserContext'
 import { useRouter } from '../context/RouterContext'
@@ -10,6 +10,10 @@ import { supabase } from '../lib/supabase'
 export default function CompanyProfilePage() {
   const { currentUser } = useUser()
   const { navigate } = useRouter()
+
+  // Search & Section Filter State
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sectionFilter, setSectionFilter] = useState('All')
 
   // Form State
   const [profileId, setProfileId] = useState(null)
@@ -252,10 +256,73 @@ export default function CompanyProfilePage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col gap-1 border-b border-line pb-4">
-        <h2 className="text-xl font-extrabold text-ink tracking-tight">Company Profile</h2>
-        <p className="text-xs text-ink-soft">Manage your business information and branding.</p>
+      {/* Header & Controls Toolbar */}
+      <div className="flex flex-col gap-4 border-b border-line pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-extrabold text-ink tracking-tight">Company Profile</h2>
+            <p className="text-xs text-ink-soft">Manage your business profile, invoicing, and preferences.</p>
+          </div>
+          
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-primary-600 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="animate-spin" size={14} />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save Changes</span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Responsive Control Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 rounded-2xl border border-line bg-surface p-2.5 shadow-xs">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-0">
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search settings..."
+              className="w-full rounded-xl border border-line bg-bg pl-9 pr-8 py-2 text-xs font-medium text-ink placeholder:text-ink-soft/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft hover:text-ink cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Section Filter Dropdown */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative w-full sm:w-auto">
+              <select
+                value={sectionFilter}
+                onChange={(e) => setSectionFilter(e.target.value)}
+                className="w-full sm:w-auto rounded-xl border border-line bg-bg px-3 py-2 text-xs font-semibold text-ink outline-none cursor-pointer"
+              >
+                <option value="All">All Sections</option>
+                <option value="Business Info">Business Info</option>
+                <option value="Preferences">Preferences</option>
+                <option value="Branding">Branding</option>
+                <option value="Invoice Settings">Invoice Settings</option>
+              </select>
+            </div>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
@@ -594,12 +661,12 @@ export default function CompanyProfilePage() {
         </div>
 
         {/* Buttons Action Bar */}
-        <div className="flex items-center justify-end gap-3.5 border-t border-line pt-5">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 border-t border-line pt-5">
           <button
             type="button"
             onClick={handleCancel}
             disabled={saving}
-            className="rounded-xl border border-line bg-surface px-5 py-2.5 text-xs sm:text-sm font-bold text-ink shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+            className="w-full sm:w-auto text-center rounded-xl border border-line bg-surface px-5 py-2.5 text-xs sm:text-sm font-bold text-ink shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
           >
             Cancel
           </button>
@@ -607,12 +674,12 @@ export default function CompanyProfilePage() {
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-primary-600 transition-colors cursor-pointer disabled:opacity-50"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-primary-600 transition-colors cursor-pointer disabled:opacity-50"
           >
             {saving ? (
               <>
                 <Loader2 className="animate-spin" size={16} />
-                <span>Saving...</span>
+                <span>Saving Changes...</span>
               </>
             ) : (
               <span>Save Changes</span>
