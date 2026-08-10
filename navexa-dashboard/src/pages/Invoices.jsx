@@ -5,6 +5,7 @@ import {
   AlertTriangle, ShieldCheck, SlidersHorizontal, Check, Printer
 } from 'lucide-react'
 import { useUser } from '../context/UserContext'
+import { useRouter } from '../context/RouterContext'
 import {
   liveInvoices, subscribeInvoices, filterAndSortInvoices, getInvoiceStats,
   autoGenerateInvoiceFromTrip, deleteInvoice, updateInvoiceStatus, INVOICE_STATUSES
