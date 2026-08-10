@@ -9,7 +9,7 @@
 import { addActivity, addTransaction, removeTransactionByReference } from './transactionStore.js'
 import { addAuditLog } from './auditStore.js'
 import { supabase } from '../lib/supabase'
-import { liveInvoices } from './invoiceStore.js'
+import { liveInvoices, notifyInvoices } from './invoiceStore.js'
 
 const STORAGE_KEY = 'navexa_payments'
 
@@ -351,11 +351,15 @@ export function deleteInvoicePaymentRecord(paymentId, currentUser = null) {
   if (deletedPayment.invoiceId) {
     const invoice = liveInvoices.find(inv => inv.id === deletedPayment.invoiceId)
     if (invoice) {
+      if (Array.isArray(invoice.payments)) {
+        invoice.payments = invoice.payments.filter(p => p.id !== paymentId && p.id !== deletedPayment.id)
+      }
       const summary = getInvoicePaymentSummary(invoice.id, invoice.totalAmount, invoice.paymentStatus)
       invoice.amountPaid = summary.amountPaid
       invoice.balanceDue = summary.remainingBalance
       invoice.paymentStatus = summary.paymentStatus
       localStorage.setItem('navexa_invoices', JSON.stringify(liveInvoices))
+      notifyInvoices()
 
       // Audit Log
       addAuditLog({

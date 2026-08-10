@@ -67,6 +67,10 @@ function notify() {
   listeners.forEach(fn => fn(snap))
 }
 
+export function notifyInvoices() {
+  notify()
+}
+
 /** Cloud sync from Supabase */
 export async function syncInvoices(userId) {
   try {
