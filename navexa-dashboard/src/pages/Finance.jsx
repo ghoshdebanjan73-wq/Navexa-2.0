@@ -14,6 +14,7 @@ import RecordExpenseModal from '../components/finance/RecordExpenseModal'
 import RecordInvoicePaymentModal from '../components/invoices/RecordInvoicePaymentModal'
 import InvoiceDetailModal from '../components/invoices/InvoiceDetailModal'
 import ConfirmDialog from '../components/trips/ConfirmDialog'
+import PasswordConfirmModal from '../components/ui/PasswordConfirmModal'
 import TransactionDetailDrawer from '../components/finance/TransactionDetailDrawer'
 import EmptyState from '../components/ui/EmptyState'
 import StatusBadge from '../components/ui/StatusBadge'
@@ -99,6 +100,7 @@ export default function FinancePage() {
   const [paymentInvoice, setPaymentInvoice] = useState(null)
   const [viewingInvoice, setViewingInvoice] = useState(null)
   const [deletingTxn, setDeletingTxn] = useState(null)
+  const [passwordConfirmTxn, setPasswordConfirmTxn] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Toast Banner State
@@ -1112,14 +1114,41 @@ export default function FinancePage() {
       {deletingTxn && (
         <ConfirmDialog
           title="Delete Transaction Record?"
-          body={`Are you sure you want to delete transaction "${deletingTxn.description || deletingTxn.id}" (${formatINR(deletingTxn.amount)})? This will adjust period financial totals.`}
-          confirmLabel={isDeleting ? 'Deleting...' : 'Delete Entry'}
+          body={`Are you sure you want to delete transaction "${deletingTxn.description || deletingTxn.id}" (${formatINR(deletingTxn.amount)})? Password verification will be required to confirm.`}
+          confirmLabel="Proceed to Verification"
           cancelLabel="Cancel"
           destructive={true}
-          onConfirm={handleDeleteConfirm}
-          onCancel={() => { if (!isDeleting) setDeletingTxn(null) }}
+          onConfirm={() => {
+            setPasswordConfirmTxn(deletingTxn)
+            setDeletingTxn(null)
+          }}
+          onCancel={() => setDeletingTxn(null)}
         />
       )}
+
+      {/* Password Verification for Financial Transaction Deletion */}
+      <PasswordConfirmModal
+        isOpen={Boolean(passwordConfirmTxn)}
+        title="Confirm Financial Transaction Deletion"
+        description={`Deleting transaction "${passwordConfirmTxn?.description || passwordConfirmTxn?.id}" (${formatINR(passwordConfirmTxn?.amount || 0)}) will adjust financial ledgers and profit/loss reports. Enter password to confirm.`}
+        actionLabel="Delete Transaction Entry"
+        onConfirm={async () => {
+          if (!passwordConfirmTxn) return
+          await deleteTransaction(passwordConfirmTxn.id)
+          await logAuditEvent({
+            action: 'DELETE',
+            entityType: 'Finance',
+            entityId: passwordConfirmTxn.id,
+            entityLabel: passwordConfirmTxn.description || passwordConfirmTxn.id,
+            description: `Transaction deleted: ${passwordConfirmTxn.type} of ₹${passwordConfirmTxn.amount} — ${passwordConfirmTxn.description}`,
+            user,
+          })
+          showToast('Transaction entry removed from ledger.')
+          setPasswordConfirmTxn(null)
+          if (selectedTxn?.id === passwordConfirmTxn.id) setSelectedTxn(null)
+        }}
+        onClose={() => setPasswordConfirmTxn(null)}
+      />
 
     </div>
   )

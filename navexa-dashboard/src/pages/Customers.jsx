@@ -14,6 +14,7 @@ import AddCustomerModal from '../components/customers/AddCustomerModal'
 import EditCustomerModal from '../components/customers/EditCustomerModal'
 import CustomerDetailPanel from '../components/customers/CustomerDetailPanel'
 import ConfirmDialog from '../components/trips/ConfirmDialog'
+import PasswordConfirmModal from '../components/ui/PasswordConfirmModal'
 import EmptyState, { SearchEmptyState, FilterEmptyState } from '../components/ui/EmptyState'
 
 // Metric Chip Component
@@ -51,6 +52,7 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState(null)
   const [viewingCustomer, setViewingCustomer] = useState(null)
   const [deletingCustomer, setDeletingCustomer] = useState(null)
+  const [passwordConfirmCustomer, setPasswordConfirmCustomer] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Toast
@@ -498,14 +500,32 @@ export default function CustomersPage() {
       {deletingCustomer && (
         <ConfirmDialog
           title="Delete Customer Profile?"
-          body={`Are you sure you want to delete customer "${deletingCustomer.name}" (${deletingCustomer.phone})? This action cannot be undone.`}
-          confirmLabel={isDeleting ? 'Deleting...' : 'Delete Customer'}
+          body={`Are you sure you want to delete customer "${deletingCustomer.name}" (${deletingCustomer.phone})? Password verification will be required to confirm.`}
+          confirmLabel="Proceed to Verification"
           cancelLabel="Cancel"
           destructive={true}
-          onConfirm={handleDeleteConfirm}
-          onCancel={() => { if (!isDeleting) setDeletingCustomer(null) }}
+          onConfirm={() => {
+            setPasswordConfirmCustomer(deletingCustomer)
+            setDeletingCustomer(null)
+          }}
+          onCancel={() => setDeletingCustomer(null)}
         />
       )}
+
+      {/* Password Verification for Customer Deletion */}
+      <PasswordConfirmModal
+        isOpen={Boolean(passwordConfirmCustomer)}
+        title="Confirm Customer Profile Deletion"
+        description={`Deleting customer profile "${passwordConfirmCustomer?.name}" (${passwordConfirmCustomer?.phone}) will remove client records and CRM history. Enter password to confirm.`}
+        actionLabel="Delete Customer Profile"
+        onConfirm={async () => {
+          if (!passwordConfirmCustomer) return
+          await deleteCustomer(passwordConfirmCustomer.id)
+          showToast(`Customer "${passwordConfirmCustomer.name}" deleted successfully.`)
+          setPasswordConfirmCustomer(null)
+        }}
+        onClose={() => setPasswordConfirmCustomer(null)}
+      />
 
     </div>
   )

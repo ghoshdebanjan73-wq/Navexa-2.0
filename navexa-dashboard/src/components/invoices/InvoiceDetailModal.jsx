@@ -11,12 +11,12 @@ import {
   deleteInvoicePaymentRecord
 } from '../../data/paymentStore'
 import StatusBadge from '../ui/StatusBadge'
-
+import PasswordConfirmModal from '../ui/PasswordConfirmModal'
 import { printInvoice } from '../../utils/printInvoice'
 
 export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordPayment, isAdmin, currentUser }) {
   const printRef = useRef(null)
-  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
+  const [deleteConfirmPayment, setDeleteConfirmPayment] = useState(null)
 
   if (!isOpen || !invoice) return null
 
@@ -47,9 +47,10 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
     printInvoice(invoice)
   }
 
-  const handleDeletePayment = (paymentId) => {
-    deleteInvoicePaymentRecord(paymentId, currentUser)
-    setDeleteConfirmId(null)
+  const handleDeletePaymentConfirmed = async () => {
+    if (!deleteConfirmPayment) return
+    deleteInvoicePaymentRecord(deleteConfirmPayment.id, currentUser)
+    setDeleteConfirmPayment(null)
   }
 
   return (
@@ -220,60 +221,63 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
                           <td className="px-3 py-2 text-ink-soft">{p.collectedBy}</td>
                           {isAdmin && (
                             <td className="px-3 py-2 text-right">
-                              {deleteConfirmId === p.id ? (
-                                <div className="flex items-center justify-end gap-1">
-                                  <button
-                                    onClick={() => handleDeletePayment(p.id)}
-                                    className="rounded-lg bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-rose-700"
-                                  >
-                                    Confirm
-                                  </button>
-                                  <button
-                                    onClick={() => setDeleteConfirmId(null)}
-                                    className="rounded-lg bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-ink-soft hover:bg-slate-300"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => setDeleteConfirmId(p.id)}
-                                  className="text-ink-soft hover:text-rose-600 transition-colors p-1"
-                                  title="Delete payment entry"
-                                >
-                                  <Trash2 size={13} />
-                                </button>
-                              )}
+                              <button
+                                onClick={() => setDeleteConfirmPayment(p)}
+                                className="text-ink-soft hover:text-rose-600 transition-colors p-1 cursor-pointer"
+                                title="Delete payment entry"
+                              >
+                                <Trash2 size={13} />
+                              </button>
                             </td>
                           )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                {/* Mobile Stacked Cards */}
-                <div className="sm:hidden space-y-2">
-                  {paymentsList.map((p) => (
-                    <div key={p.id} className="rounded-xl border border-line bg-surface p-3 space-y-1 text-xs">
-                      <div className="flex items-center justify-between font-bold">
-                        <span className="num">{p.paymentNumber}</span>
-                        <span className="text-emerald-700 font-extrabold num">{formatINR(p.amount)}</span>
+                  {/* Mobile Stacked Cards */}
+                  <div className="sm:hidden space-y-2">
+                    {paymentsList.map((p) => (
+                      <div key={p.id} className="rounded-xl border border-line bg-surface p-3 space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between font-bold">
+                          <span className="num">{p.paymentNumber}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-700 font-extrabold num">{formatINR(p.amount)}</span>
+                            {isAdmin && (
+                              <button
+                                onClick={() => setDeleteConfirmPayment(p)}
+                                className="text-ink-soft hover:text-rose-600 p-0.5"
+                                title="Delete payment"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-ink-soft">
+                          <span>{p.paymentDate} • {p.paymentMethod}</span>
+                          <span>By: {p.collectedBy}</span>
+                        </div>
+                        {p.referenceNumber && (
+                          <p className="text-[10px] text-ink-soft num">Ref: {p.referenceNumber}</p>
+                        )}
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-ink-soft">
-                        <span>{p.paymentDate} • {p.paymentMethod}</span>
-                        <span>By: {p.collectedBy}</span>
-                      </div>
-                      {p.referenceNumber && (
-                        <p className="text-[10px] text-ink-soft num">Ref: {p.referenceNumber}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+
+          <PasswordConfirmModal
+            isOpen={!!deleteConfirmPayment}
+            title="Confirm Payment Deletion"
+            description={`Deleting payment ${deleteConfirmPayment?.paymentNumber || ''} (${formatINR(deleteConfirmPayment?.amount || 0)}) will update invoice balance and audit logs. Enter password to verify.`}
+            actionLabel="Delete Payment"
+            onConfirm={handleDeletePaymentConfirmed}
+            onClose={() => setDeleteConfirmPayment(null)}
+          />
 
         {/* Printable Official Invoice Sheet */}
         <div id="printable-invoice" ref={printRef} className="space-y-6 bg-surface p-2 text-ink">

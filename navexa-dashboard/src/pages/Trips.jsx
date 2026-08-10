@@ -18,6 +18,7 @@ import EditTripModal from '../components/trips/EditTripModal'
 import TripDetailPanel from '../components/trips/TripDetailPanel'
 import CancelTripModal from '../components/trips/CancelTripModal'
 import ConfirmDialog from '../components/trips/ConfirmDialog'
+import PasswordConfirmModal from '../components/ui/PasswordConfirmModal'
 import EmptyState from '../components/ui/EmptyState'
 import StatusBadge from '../components/ui/StatusBadge'
 import Button from '../components/ui/Button'
@@ -59,6 +60,7 @@ export default function TripsPage() {
   const [viewingTrip, setViewingTrip] = useState(null)
   const [cancellingTrip, setCancellingTrip] = useState(null)
   const [deletingTrip, setDeletingTrip] = useState(null)
+  const [passwordConfirmTrip, setPasswordConfirmTrip] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Toast
@@ -864,14 +866,32 @@ export default function TripsPage() {
       {deletingTrip && (
         <ConfirmDialog
           title={`Remove Trip Record #${deletingTrip.id}?`}
-          body={`Are you sure you want to delete trip booking #${deletingTrip.id} for customer "${deletingTrip.customer}"? This operational record will be permanently removed from Navexa.`}
-          confirmLabel={isDeleting ? 'Removing...' : 'Delete Record'}
+          body={`Are you sure you want to delete trip booking #${deletingTrip.id} for customer "${deletingTrip.customer}"? Password verification will be required to confirm.`}
+          confirmLabel="Proceed to Verification"
           cancelLabel="Cancel"
           destructive={true}
-          onConfirm={handleDeleteConfirm}
+          onConfirm={() => {
+            setPasswordConfirmTrip(deletingTrip)
+            setDeletingTrip(null)
+          }}
           onCancel={() => setDeletingTrip(null)}
         />
       )}
+
+      {/* Password Verification for Trip Deletion */}
+      <PasswordConfirmModal
+        isOpen={Boolean(passwordConfirmTrip)}
+        title="Confirm Trip Record Deletion"
+        description={`Deleting trip #${passwordConfirmTrip?.id} (${passwordConfirmTrip?.customer}) will permanently remove operational and dispatch records. Enter password to confirm.`}
+        actionLabel="Delete Trip Record"
+        onConfirm={async () => {
+          if (!passwordConfirmTrip) return
+          await deleteTrip(passwordConfirmTrip.id)
+          showToast(`Trip record "${passwordConfirmTrip.id}" removed successfully.`)
+          setPasswordConfirmTrip(null)
+        }}
+        onClose={() => setPasswordConfirmTrip(null)}
+      />
     </div>
   )
 }

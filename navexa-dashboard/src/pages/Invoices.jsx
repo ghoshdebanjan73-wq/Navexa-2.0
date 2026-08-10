@@ -15,6 +15,7 @@ import { liveCustomers, subscribeCustomers } from '../data/customerStore'
 import InvoiceDetailModal from '../components/invoices/InvoiceDetailModal'
 import RecordInvoicePaymentModal from '../components/invoices/RecordInvoicePaymentModal'
 import ConfirmDialog from '../components/trips/ConfirmDialog'
+import PasswordConfirmModal from '../components/ui/PasswordConfirmModal'
 import EmptyState from '../components/ui/EmptyState'
 import StatusBadge from '../components/ui/StatusBadge'
 import PageHeader from '../components/ui/PageHeader'
@@ -22,6 +23,7 @@ import { printInvoice } from '../utils/printInvoice'
 
 export default function InvoicesPage() {
   const { user } = useUser()
+  const { routeParams, clearRouteParams } = useRouter()
   const isAdmin = user?.role !== 'Staff'
 
   // Data Store States
@@ -31,7 +33,14 @@ export default function InvoicesPage() {
 
   // Filters & Search
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All')
+  const [statusFilter, setStatusFilter] = useState(routeParams?.Invoices?.statusFilter || 'All')
+
+  useEffect(() => {
+    if (routeParams?.Invoices?.statusFilter) {
+      setStatusFilter(routeParams.Invoices.statusFilter)
+    }
+  }, [routeParams?.Invoices?.statusFilter])
+
   const [customerFilter, setCustomerFilter] = useState('All')
   const [sortBy, setSortBy] = useState('Newest')
 
@@ -42,6 +51,7 @@ export default function InvoicesPage() {
   const [viewingInvoice, setViewingInvoice] = useState(null)
   const [paymentInvoice, setPaymentInvoice] = useState(null)
   const [deletingInvoice, setDeletingInvoice] = useState(null)
+  const [passwordConfirmInvoice, setPasswordConfirmInvoice] = useState(null)
   const [showAutoGenerateModal, setShowAutoGenerateModal] = useState(false)
   const [selectedTripToInvoice, setSelectedTripToInvoice] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -716,14 +726,32 @@ export default function InvoicesPage() {
       {deletingInvoice && (
         <ConfirmDialog
           title={`Remove Invoice #${deletingInvoice.invoiceNumber}?`}
-          body={`Are you sure you want to delete invoice "${deletingInvoice.invoiceNumber}" for customer "${deletingInvoice.customerName}"? This financial record will be permanently deleted.`}
-          confirmLabel={isDeleting ? 'Deleting...' : 'Delete Invoice'}
+          body={`Are you sure you want to delete invoice "${deletingInvoice.invoiceNumber}" for customer "${deletingInvoice.customerName}"? Password verification will be required to confirm.`}
+          confirmLabel="Proceed to Verification"
           cancelLabel="Cancel"
           destructive={true}
-          onConfirm={handleDeleteConfirm}
-          onCancel={() => { if (!isDeleting) setDeletingInvoice(null) }}
+          onConfirm={() => {
+            setPasswordConfirmInvoice(deletingInvoice)
+            setDeletingInvoice(null)
+          }}
+          onCancel={() => setDeletingInvoice(null)}
         />
       )}
+
+      {/* Secure Password Verification for Invoice Deletion */}
+      <PasswordConfirmModal
+        isOpen={Boolean(passwordConfirmInvoice)}
+        title="Confirm Invoice Deletion"
+        description={`Deleting invoice #${passwordConfirmInvoice?.invoiceNumber} (${formatINR(passwordConfirmInvoice?.totalAmount || 0)}) will alter accounting records and customer metrics. Please enter your password to confirm.`}
+        actionLabel="Delete Invoice"
+        onConfirm={async () => {
+          if (!passwordConfirmInvoice) return
+          await deleteInvoice(passwordConfirmInvoice.id)
+          showToast(`Invoice ${passwordConfirmInvoice.invoiceNumber} removed successfully.`)
+          setPasswordConfirmInvoice(null)
+        }}
+        onClose={() => setPasswordConfirmInvoice(null)}
+      />
 
     </div>
   )

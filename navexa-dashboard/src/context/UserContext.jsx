@@ -187,6 +187,40 @@ export function UserProvider({ children }) {
     }
   }
 
+  const verifyPassword = async (password) => {
+    if (!password || !password.trim()) {
+      return { success: false, error: 'Password is required.' }
+    }
+
+    const cleanPass = password.trim()
+
+    // 1. If user is authenticated via Supabase Auth
+    if (currentUser?.email) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: currentUser.email,
+          password: cleanPass,
+        })
+
+        if (error || !data.user) {
+          return { success: false, error: 'Incorrect password. Verification failed.' }
+        }
+
+        return { success: true }
+      } catch (err) {
+        console.error('Supabase password verification error:', err)
+        return { success: false, error: err.message || 'Incorrect password. Verification failed.' }
+      }
+    }
+
+    // 2. Demo environment fallback
+    if (cleanPass === 'admin123' || cleanPass === 'navexa123' || cleanPass === 'password') {
+      return { success: true }
+    }
+
+    return { success: false, error: 'Incorrect password. Verification failed.' }
+  }
+
   return (
     <UserContext.Provider
       value={{
@@ -196,6 +230,7 @@ export function UserProvider({ children }) {
         setUserByName,
         loading,
         signOut,
+        verifyPassword,
         initials: getInitials(currentUser?.name),
         getInitials,
       }}
@@ -216,6 +251,7 @@ export function useUser() {
       setUserByName: () => {},
       loading: false,
       signOut: () => Promise.resolve({ success: true }),
+      verifyPassword: (pass) => Promise.resolve({ success: pass === 'admin123' || pass === 'navexa123' }),
       initials: 'B',
       getInitials,
     }
