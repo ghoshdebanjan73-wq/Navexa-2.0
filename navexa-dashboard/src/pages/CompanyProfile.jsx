@@ -48,6 +48,37 @@ export default function CompanyProfilePage() {
   const [errors, setErrors] = useState({})
   const [toast, setToast] = useState(null)
 
+  // Derived section visibility based on search query & section filter
+  const showBusinessInfo = useMemo(() => {
+    if (sectionFilter !== 'All' && sectionFilter !== 'Business Info') return false
+    if (!searchQuery.trim()) return true
+    const haystack = `${businessName} ${ownerName} ${phone} ${email} ${gstNumber} ${address} ${city} ${state} ${country} ${postalCode} business information address owner phone email gst`.toLowerCase()
+    return haystack.includes(searchQuery.trim().toLowerCase())
+  }, [sectionFilter, searchQuery, businessName, ownerName, phone, email, gstNumber, address, city, state, country, postalCode])
+
+  const showPreferences = useMemo(() => {
+    if (sectionFilter !== 'All' && sectionFilter !== 'Preferences') return false
+    if (!searchQuery.trim()) return true
+    const haystack = `${currency} ${timezone} ${dateFormat} business preferences currency time zone time format 12h 24h`.toLowerCase()
+    return haystack.includes(searchQuery.trim().toLowerCase())
+  }, [sectionFilter, searchQuery, currency, timezone, dateFormat])
+
+  const showBranding = useMemo(() => {
+    if (sectionFilter !== 'All' && sectionFilter !== 'Branding') return false
+    if (!searchQuery.trim()) return true
+    const haystack = `branding logo business logo image upload png jpg`.toLowerCase()
+    return haystack.includes(searchQuery.trim().toLowerCase())
+  }, [sectionFilter, searchQuery])
+
+  const showInvoiceSettings = useMemo(() => {
+    if (sectionFilter !== 'All' && sectionFilter !== 'Invoice Settings') return false
+    if (!searchQuery.trim()) return true
+    const haystack = `${invoicePrefix} ${startingInvoiceNumber} invoice settings prefix starting invoice number`.toLowerCase()
+    return haystack.includes(searchQuery.trim().toLowerCase())
+  }, [sectionFilter, searchQuery, invoicePrefix, startingInvoiceNumber])
+
+  const hasAnyMatch = showBusinessInfo || showPreferences || showBranding || showInvoiceSettings
+
   // Fetch company profile on mount
   useEffect(() => {
     async function loadCompanyProfile() {
@@ -326,21 +357,39 @@ export default function CompanyProfilePage() {
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          
-          {/* LEFT: Business Info Card (Spans 2 cols on desktop) */}
-          <div className="md:col-span-2 space-y-6">
+        {!hasAnyMatch ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-line bg-surface p-12 text-center shadow-xs">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 mb-3">
+              <Search size={24} />
+            </div>
+            <h3 className="text-sm font-extrabold text-ink">No settings match "{searchQuery}"</h3>
+            <p className="text-xs text-ink-soft mt-1 max-w-sm">Try searching for terms like "gst", "phone", "invoice", "currency", or "logo".</p>
+            <button
+              type="button"
+              onClick={() => { setSearchQuery(''); setSectionFilter('All') }}
+              className="mt-4 rounded-xl border border-line bg-bg px-4 py-2 text-xs font-bold text-ink hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              Reset Search & Filters
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             
-            {/* Business Information Card */}
-            <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs space-y-5">
-              <div className="flex items-center gap-2.5 border-b border-line pb-3.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
-                  <Building2 size={16} />
-                </div>
-                <h3 className="text-sm font-bold text-ink">Business Information</h3>
-              </div>
+            {/* LEFT: Business Info & Preferences (Spans 2 cols on desktop) */}
+            {(showBusinessInfo || showPreferences) && (
+              <div className="md:col-span-2 space-y-6">
+                
+                {/* Business Information Card */}
+                {showBusinessInfo && (
+                  <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs space-y-5">
+                    <div className="flex items-center gap-2.5 border-b border-line pb-3.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
+                        <Building2 size={16} />
+                      </div>
+                      <h3 className="text-sm font-bold text-ink">Business Information</h3>
+                    </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Business Name */}
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-ink">
@@ -514,151 +563,162 @@ export default function CompanyProfilePage() {
                 </div>
               </div>
             </div>
+          )}
 
             {/* Business Preferences Card */}
-            <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs space-y-5">
-              <div className="flex items-center gap-2.5 border-b border-line pb-3.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
-                  <Sliders size={16} />
-                </div>
-                <h3 className="text-sm font-bold text-ink">Business Preferences</h3>
-              </div>
+                {showPreferences && (
+                  <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs space-y-5">
+                    <div className="flex items-center gap-2.5 border-b border-line pb-3.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
+                        <Sliders size={16} />
+                      </div>
+                      <h3 className="text-sm font-bold text-ink">Business Preferences</h3>
+                    </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                {/* Currency */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-ink">Currency</label>
-                  <select
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full rounded-xl border bg-bg px-3 py-2.5 text-xs sm:text-sm border-line text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 cursor-pointer"
-                  >
-                    <option value="INR">INR (₹) - Indian Rupee</option>
-                    <option value="USD">USD ($) - US Dollar</option>
-                    <option value="EUR">EUR (€) - Euro</option>
-                    <option value="GBP">GBP (£) - British Pound</option>
-                  </select>
-                </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      {/* Currency */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-ink">Currency</label>
+                        <select
+                          value={currency}
+                          onChange={(e) => setCurrency(e.target.value)}
+                          className="w-full rounded-xl border bg-bg px-3 py-2.5 text-xs sm:text-sm border-line text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 cursor-pointer"
+                        >
+                          <option value="INR">INR (₹) - Indian Rupee</option>
+                          <option value="USD">USD ($) - US Dollar</option>
+                          <option value="EUR">EUR (€) - Euro</option>
+                          <option value="GBP">GBP (£) - British Pound</option>
+                        </select>
+                      </div>
 
-                {/* Time Zone */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-ink">Time Zone</label>
-                  <select
-                    value={timezone}
-                    onChange={(e) => setTimezone(e.target.value)}
-                    className="w-full rounded-xl border bg-bg px-3 py-2.5 text-xs sm:text-sm border-line text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 cursor-pointer"
-                  >
-                    <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
-                    <option value="UTC">UTC (Greenwich Mean Time)</option>
-                    <option value="America/New_York">America/New_York (EST)</option>
-                    <option value="Europe/London">Europe/London (GMT)</option>
-                  </select>
-                </div>
+                      {/* Time Zone */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-ink">Time Zone</label>
+                        <select
+                          value={timezone}
+                          onChange={(e) => setTimezone(e.target.value)}
+                          className="w-full rounded-xl border bg-bg px-3 py-2.5 text-xs sm:text-sm border-line text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 cursor-pointer"
+                        >
+                          <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                          <option value="UTC">UTC (Greenwich Mean Time)</option>
+                          <option value="America/New_York">America/New_York (EST)</option>
+                          <option value="Europe/London">Europe/London (GMT)</option>
+                        </select>
+                      </div>
 
-                {/* Date Format */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-ink">Time Preference</label>
-                  <select
-                    value={dateFormat}
-                    onChange={(e) => setDateFormat(e.target.value)}
-                    className="w-full rounded-xl border bg-bg px-3 py-2.5 text-xs sm:text-sm border-line text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 cursor-pointer"
-                  >
-                    <option value="12h">12-hour (10:30 AM)</option>
-                    <option value="24h">24-hour (10:30)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT: Branding & Invoice Settings Card */}
-          <div className="space-y-6">
-            
-            {/* Branding Card */}
-            <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs space-y-5">
-              <div className="flex items-center gap-2.5 border-b border-line pb-3.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
-                  <Settings size={16} />
-                </div>
-                <h3 className="text-sm font-bold text-ink">Branding</h3>
-              </div>
-
-              <div className="space-y-4">
-                <p className="text-[11px] font-semibold text-ink-soft">Business Logo</p>
-                
-                {/* Logo Preview and Upload */}
-                {logoPreview ? (
-                  <div className="relative group flex flex-col items-center justify-center rounded-2xl border border-line bg-bg p-4.5">
-                    <img
-                      src={logoPreview}
-                      alt="Business Logo Preview"
-                      className="max-h-32 max-w-full rounded-xl object-contain bg-white p-2 shadow-2xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleRemoveLogo}
-                      className="absolute right-3.5 top-3.5 flex h-7.5 w-7.5 items-center justify-center rounded-full bg-rose-600 text-white shadow-md hover:bg-rose-700 transition-colors cursor-pointer"
-                      title="Remove logo"
-                    >
-                      <X size={14} />
-                    </button>
-                    <span className="text-[10px] text-emerald-600 font-bold mt-2">Preview Ready</span>
+                      {/* Date Format */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-ink">Time Preference</label>
+                        <select
+                          value={dateFormat}
+                          onChange={(e) => setDateFormat(e.target.value)}
+                          className="w-full rounded-xl border bg-bg px-3 py-2.5 text-xs sm:text-sm border-line text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 cursor-pointer"
+                        >
+                          <option value="12h">12-hour (10:30 AM)</option>
+                          <option value="24h">24-hour (10:30)</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-bg p-8 hover:bg-slate-50 transition-all hover:border-primary/50 cursor-pointer">
-                    <Upload className="text-ink-soft mb-2" size={24} />
-                    <span className="text-xs font-bold text-ink">Upload Business Logo</span>
-                    <span className="text-[10px] text-ink-soft mt-1">PNG, JPG up to 2MB</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoChange}
-                      className="hidden"
-                    />
-                  </label>
                 )}
               </div>
-            </div>
+            )}
 
-            {/* Invoice Settings Card */}
-            <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs space-y-5">
-              <div className="flex items-center gap-2.5 border-b border-line pb-3.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
-                  <FileText size={16} />
-                </div>
-                <h3 className="text-sm font-bold text-ink">Invoice Settings</h3>
+            {/* RIGHT: Branding & Invoice Settings Card */}
+            {(showBranding || showInvoiceSettings) && (
+              <div className="space-y-6">
+                
+                {/* Branding Card */}
+                {showBranding && (
+                  <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs space-y-5">
+                    <div className="flex items-center gap-2.5 border-b border-line pb-3.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
+                        <Settings size={16} />
+                      </div>
+                      <h3 className="text-sm font-bold text-ink">Branding</h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      <p className="text-[11px] font-semibold text-ink-soft">Business Logo</p>
+                      
+                      {/* Logo Preview and Upload */}
+                      {logoPreview ? (
+                        <div className="relative group flex flex-col items-center justify-center rounded-2xl border border-line bg-bg p-4.5">
+                          <img
+                            src={logoPreview}
+                            alt="Business Logo Preview"
+                            className="max-h-32 max-w-full rounded-xl object-contain bg-white p-2 shadow-2xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleRemoveLogo}
+                            className="absolute right-3.5 top-3.5 flex h-7.5 w-7.5 items-center justify-center rounded-full bg-rose-600 text-white shadow-md hover:bg-rose-700 transition-colors cursor-pointer"
+                            title="Remove logo"
+                          >
+                            <X size={14} />
+                          </button>
+                          <span className="text-[10px] text-emerald-600 font-bold mt-2">Preview Ready</span>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-bg p-8 hover:bg-slate-50 transition-all hover:border-primary/50 cursor-pointer">
+                          <Upload className="text-ink-soft mb-2" size={24} />
+                          <span className="text-xs font-bold text-ink">Upload Business Logo</span>
+                          <span className="text-[10px] text-ink-soft mt-1">PNG, JPG up to 2MB</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoChange}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Invoice Settings Card */}
+                {showInvoiceSettings && (
+                  <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs space-y-5">
+                    <div className="flex items-center gap-2.5 border-b border-line pb-3.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary">
+                        <FileText size={16} />
+                      </div>
+                      <h3 className="text-sm font-bold text-ink">Invoice Settings</h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Invoice Prefix */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-ink">Invoice Prefix</label>
+                        <input
+                          type="text"
+                          value={invoicePrefix}
+                          onChange={(e) => setInvoicePrefix(e.target.value)}
+                          placeholder="e.g. NVX"
+                          className="w-full rounded-xl border bg-bg px-3.5 py-2.5 text-xs sm:text-sm border-line text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        />
+                      </div>
+
+                      {/* Starting Invoice Number */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-ink">Starting Invoice Number</label>
+                        <input
+                          type="text"
+                          value={startingInvoiceNumber}
+                          onChange={(e) => setStartingInvoiceNumber(e.target.value)}
+                          placeholder="e.g. 000001"
+                          className="w-full rounded-xl border bg-bg px-3.5 py-2.5 text-xs sm:text-sm border-line text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               </div>
-
-              <div className="space-y-4">
-                {/* Invoice Prefix */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-ink">Invoice Prefix</label>
-                  <input
-                    type="text"
-                    value={invoicePrefix}
-                    onChange={(e) => setInvoicePrefix(e.target.value)}
-                    placeholder="e.g. NVX"
-                    className="w-full rounded-xl border bg-bg px-3.5 py-2.5 text-xs sm:text-sm border-line text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  />
-                </div>
-
-                {/* Starting Invoice Number */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-ink">Starting Invoice Number</label>
-                  <input
-                    type="text"
-                    value={startingInvoiceNumber}
-                    onChange={(e) => setStartingInvoiceNumber(e.target.value)}
-                    placeholder="e.g. 000001"
-                    className="w-full rounded-xl border bg-bg px-3.5 py-2.5 text-xs sm:text-sm border-line text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  />
-                </div>
-              </div>
-            </div>
+            )}
 
           </div>
-
-        </div>
+        )}
 
         {/* Buttons Action Bar */}
         <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 border-t border-line pt-5">
