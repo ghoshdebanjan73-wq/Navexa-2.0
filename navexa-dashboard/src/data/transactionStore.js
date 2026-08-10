@@ -591,8 +591,21 @@ export function computeSummary() {
   const netProfit = totalIncome - totalExpenses
 
   // Invoices & Receivables
-  const paidInvoiceRevenue = liveInvoices.filter(i => i.paymentStatus === 'Paid').reduce((sum, i) => sum + i.totalAmount, 0)
-  const pendingInvoiceAmount = liveInvoices.filter(i => i.paymentStatus !== 'Paid' && i.paymentStatus !== 'Cancelled').reduce((sum, i) => sum + i.balanceDue, 0)
+  const paidInvoiceRevenue = liveInvoices
+    .filter(i => i.paymentStatus === 'Paid')
+    .reduce((sum, i) => sum + (Number(i.amountPaid || i.totalAmount) || 0), 0)
+
+  const pendingInvoiceAmount = liveInvoices
+    .filter(i => i.paymentStatus !== 'Paid' && i.paymentStatus !== 'Cancelled')
+    .reduce((sum, i) => {
+      const tot = Number(i.totalAmount || 0)
+      const paid = Number(i.amountPaid || 0)
+      const computedBal = Math.max(0, tot - paid)
+      const bal = i.balanceDue !== undefined && !isNaN(Number(i.balanceDue))
+        ? Number(i.balanceDue)
+        : computedBal
+      return sum + (isNaN(bal) ? 0 : bal)
+    }, 0)
 
   return {
     income: { value: totalIncome, delta: 0, direction: 'up', sentiment: 'positive' },

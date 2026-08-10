@@ -581,8 +581,16 @@ export function getInvoiceStats() {
 
   const totalPaidRevenue = liveInvoices.reduce((sum, inv) => sum + (Number(inv.amountPaid) || 0), 0)
   const totalPendingReceivables = liveInvoices
-    .filter(inv => inv.paymentStatus !== 'Cancelled')
-    .reduce((sum, inv) => sum + (Number(inv.balanceDue) || 0), 0)
+    .filter(inv => inv.paymentStatus !== 'Cancelled' && inv.paymentStatus !== 'Paid')
+    .reduce((sum, inv) => {
+      const tot = Number(inv.totalAmount || 0)
+      const paid = Number(inv.amountPaid || 0)
+      const computedBal = Math.max(0, tot - paid)
+      const bal = inv.balanceDue !== undefined && !isNaN(Number(inv.balanceDue))
+        ? Number(inv.balanceDue)
+        : computedBal
+      return sum + (isNaN(bal) ? 0 : bal)
+    }, 0)
 
   // Revenue this month
   const now = new Date()

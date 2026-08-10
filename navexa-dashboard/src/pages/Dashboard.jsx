@@ -116,8 +116,8 @@ export default function Dashboard({ onNavigate }) {
                 <StatCard
                   icon={FileText}
                   title="Receivables"
-                  value={unpaidCount > 0 ? formatINR(unpaidAmount) : (invoiceStats?.total || 0)}
-                  infoText={unpaidCount > 0 ? `${unpaidCount} Unpaid Invoices` : 'All Invoices Paid'}
+                  value={unpaidCount > 0 ? unpaidAmount : (invoiceStats?.total || 0)}
+                  infoText={unpaidCount > 0 ? `${unpaidCount} Unpaid Invoice${unpaidCount > 1 ? 's' : ''}` : 'All Invoices Paid'}
                   sentiment={unpaidCount > 0 ? 'warning' : 'positive'}
                   direction="neutral"
                   format={unpaidCount > 0 ? 'currency' : 'plain'}

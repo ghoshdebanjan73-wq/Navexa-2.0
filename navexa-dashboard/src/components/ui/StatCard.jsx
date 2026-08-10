@@ -1,7 +1,12 @@
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react'
 
-const formatINR = (n) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n)
+const formatINR = (n) => {
+  if (n === null || n === undefined) return '₹0'
+  if (typeof n === 'string' && (n.includes('₹') || n.includes('Rs'))) return n
+  const num = Number(n)
+  if (isNaN(num)) return '₹0'
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num)
+}
 
 export default function StatCard({
   icon: Icon,
