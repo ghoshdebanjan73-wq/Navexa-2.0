@@ -10,7 +10,7 @@ import { getTripProfitability } from '../../data/transactionStore'
 import StatusBadge from '../ui/StatusBadge'
 import ConfirmDialog from './ConfirmDialog'
 
-export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelete, isAdmin }) {
+export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelete, onCancel, isAdmin }) {
   const [confirmStatus, setConfirmStatus] = useState(null)
   const [actualFareInput, setActualFareInput] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -317,15 +317,23 @@ export default function TripDetailPanel({ trip, isOpen, onClose, onEdit, onDelet
         {isAdmin && (
           <div className="sticky bottom-0 bg-surface border-t border-line p-4 flex items-center justify-between gap-3">
             {!isFinalized ? (
-              <button
-                onClick={() => { onClose(); onEdit(trip) }}
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary-50 text-primary border border-primary/20 px-4 py-2.5 text-xs font-bold hover:bg-primary-100 transition-colors cursor-pointer"
-              >
-                <Edit3 size={15} /> Edit Trip
-              </button>
+              <div className="flex-1 flex items-center gap-2">
+                <button
+                  onClick={() => { onClose(); onEdit(trip) }}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-primary-50 text-primary border border-primary/20 px-3 py-2 text-xs font-bold hover:bg-primary-100 transition-colors cursor-pointer"
+                >
+                  <Edit3 size={15} /> Edit Trip
+                </button>
+                <button
+                  onClick={() => { onClose(); onCancel && onCancel(trip) }}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-300/70 px-3 py-2 text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer"
+                >
+                  <AlertCircle size={15} /> Cancel Trip
+                </button>
+              </div>
             ) : (
               <div className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 px-4 py-2.5 text-xs font-bold select-none">
-                <Lock size={14} /> Finalized Record (Locked)
+                <Lock size={14} /> Finalized Record ({trip.status}) — Read Only
               </div>
             )}
           </div>

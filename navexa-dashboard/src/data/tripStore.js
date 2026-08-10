@@ -408,7 +408,7 @@ export function isTripFinalized(trip) {
   return trip.status === 'Completed' || trip.status === 'Cancelled'
 }
 
-export async function updateTripStatus(id, newStatus, actualFare = null, userName = 'Dispatcher') {
+export async function updateTripStatus(id, newStatus, actualFare = null, userName = 'Dispatcher', statusNote = null) {
   const idx = liveTrips.findIndex(t => t.id === id)
   if (idx === -1) throw new Error('Trip not found')
 
@@ -426,13 +426,19 @@ export async function updateTripStatus(id, newStatus, actualFare = null, userNam
       label: `Trip ${newStatus}`,
       timestamp: now,
       performedBy: userName,
+      note: statusNote || undefined,
     }
   ]
+
+  const updatedNotes = statusNote
+    ? `${trip.notes ? `${trip.notes}\n` : ''}[${newStatus}]: ${statusNote}`.trim()
+    : trip.notes
 
   const updated = {
     ...trip,
     status: newStatus,
     actualFare: actualFare !== null ? Number(actualFare) : trip.actualFare,
+    notes: updatedNotes,
     timeline: updatedTimeline,
     updatedAt: now,
   }
@@ -442,7 +448,7 @@ export async function updateTripStatus(id, newStatus, actualFare = null, userNam
   addActivity({
     id: Date.now(),
     type: 'trip',
-    text: `Trip ${id} status updated to ${newStatus}`,
+    text: `Trip ${id} status updated to ${newStatus}${statusNote ? ` (${statusNote})` : ''}`,
     performedBy: userName,
     time: 'Just now',
   })
@@ -463,8 +469,8 @@ export async function updateTripStatus(id, newStatus, actualFare = null, userNam
       entityType: 'Trip',
       entityId: id,
       entityLabel: `Trip #${id}`,
-      description: `Trip #${id} for ${trip.customer} cancelled. Record locked as Finalized Record.`,
-      metadata: { auditTag: 'Trip Cancelled' },
+      description: `Trip #${id} for ${trip.customer} cancelled (${statusNote || 'No reason specified'}). Record locked as Finalized Record.`,
+      metadata: { auditTag: 'Trip Cancelled', reason: statusNote },
     })
   }
 
@@ -476,6 +482,7 @@ export async function updateTripStatus(id, newStatus, actualFare = null, userNam
       .update({
         status: newStatus,
         actual_fare: updated.actualFare,
+        notes: updated.notes,
         timeline: updatedTimeline,
         updated_at: now,
       })

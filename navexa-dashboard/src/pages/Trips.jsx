@@ -15,6 +15,7 @@ import { liveCustomers, subscribeCustomers } from '../data/customerStore'
 import AddTripModal from '../components/trips/AddTripModal'
 import EditTripModal from '../components/trips/EditTripModal'
 import TripDetailPanel from '../components/trips/TripDetailPanel'
+import CancelTripModal from '../components/trips/CancelTripModal'
 import ConfirmDialog from '../components/trips/ConfirmDialog'
 import EmptyState from '../components/ui/EmptyState'
 import StatusBadge from '../components/ui/StatusBadge'
@@ -48,6 +49,7 @@ export default function TripsPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingTrip, setEditingTrip] = useState(null)
   const [viewingTrip, setViewingTrip] = useState(null)
+  const [cancellingTrip, setCancellingTrip] = useState(null)
   const [deletingTrip, setDeletingTrip] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -623,20 +625,29 @@ export default function TripsPage() {
                           </button>
 
                           {isAdmin && !isFinalized && (
-                            <button
-                              onClick={() => setEditingTrip(trip)}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-soft hover:bg-slate-100 hover:text-primary transition-colors cursor-pointer"
-                              title="Edit Trip"
-                            >
-                              <Edit3 size={15} />
-                            </button>
+                            <>
+                              <button
+                                onClick={() => setEditingTrip(trip)}
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-soft hover:bg-slate-100 hover:text-primary transition-colors cursor-pointer"
+                                title="Edit Trip"
+                              >
+                                <Edit3 size={15} />
+                              </button>
+                              <button
+                                onClick={() => setCancellingTrip(trip)}
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-soft hover:bg-amber-50 hover:text-amber-700 transition-colors cursor-pointer"
+                                title="Cancel Trip"
+                              >
+                                <AlertTriangle size={15} />
+                              </button>
+                            </>
                           )}
 
                           {isAdmin && (
                             <button
                               onClick={() => setDeletingTrip(trip)}
                               className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-soft hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
-                              title="Delete / Cancel Trip Record"
+                              title="Delete Trip Record"
                             >
                               <Trash2 size={15} />
                             </button>
@@ -715,6 +726,15 @@ export default function TripsPage() {
                         </button>
                       )}
 
+                      {isAdmin && !isFinalized && (
+                        <button
+                          onClick={() => setCancellingTrip(trip)}
+                          className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      )}
+
                       <button
                         onClick={() => setViewingTrip(trip)}
                         className="rounded-lg border border-line bg-surface px-2.5 py-1 text-[11px] font-bold text-ink hover:bg-slate-50 cursor-pointer"
@@ -767,6 +787,10 @@ export default function TripsPage() {
             setViewingTrip(null)
             setEditingTrip(t)
           }}
+          onCancel={(t) => {
+            setViewingTrip(null)
+            setCancellingTrip(t)
+          }}
           onDelete={(t) => {
             setViewingTrip(null)
             setDeletingTrip(t)
@@ -774,6 +798,14 @@ export default function TripsPage() {
           isAdmin={isAdmin}
         />
       )}
+
+      {/* Cancel Trip Modal */}
+      <CancelTripModal
+        trip={cancellingTrip}
+        isOpen={Boolean(cancellingTrip)}
+        onClose={() => setCancellingTrip(null)}
+        onSuccess={(msg) => showToast(msg)}
+      />
 
       {/* Delete / Cancel Confirmation Modal */}
       {deletingTrip && (
