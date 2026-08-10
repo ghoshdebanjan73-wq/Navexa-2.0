@@ -10,8 +10,8 @@ const getGreetingPrefix = () => {
 
 export default function WelcomeSection() {
   const { user } = useUser()
-  const userName = user?.name || 'Banjo'
-  const greeting = `${getGreetingPrefix()}, ${userName}`
+  const firstName = user?.firstName || (user?.name ? user.name.trim().split(' ')[0] : 'Admin')
+  const greeting = `${getGreetingPrefix()}, ${firstName}`
   const isStaff = user?.role === 'Staff'
 
   const todayDate = new Date().toLocaleDateString('en-IN', {
@@ -35,10 +35,10 @@ export default function WelcomeSection() {
         </p>
       </div>
 
-      {/* Right: Dynamic Date & Business Location Metadata */}
+      {/* Right: Dynamic Date */}
       <div className="text-left sm:text-right shrink-0">
         <p className="text-xs font-semibold text-ink-soft">
-          {todayDate} <span className="text-line mx-1">•</span> Hooghly, West Bengal
+          {todayDate}
         </p>
       </div>
     </div>

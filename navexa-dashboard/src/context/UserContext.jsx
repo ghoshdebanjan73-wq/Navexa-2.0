@@ -42,20 +42,41 @@ export function UserProvider({ children }) {
       setLoading(true)
       if (session) {
         const sbUser = session.user
+        const userMeta = sbUser.user_metadata || {}
+
         try {
           const { data, error } = await supabase
             .from('users')
-            .select('name, role')
+            .select('name, first_name, last_name, role')
             .eq('id', sbUser.id)
             .maybeSingle()
 
-          const userRole = data?.role || sbUser.user_metadata?.role || 'Staff'
-          const userName = data?.name || sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || sbUser.email.split('@')[0]
+          let fn = data?.first_name || userMeta.first_name || ''
+          let ln = data?.last_name || userMeta.last_name || ''
+
+          if (!fn && (data?.name || userMeta.full_name || userMeta.name)) {
+            const rawName = (data?.name || userMeta.full_name || userMeta.name).trim()
+            const parts = rawName.split(' ')
+            fn = parts[0]
+            ln = parts.slice(1).join(' ')
+          }
+
+          if (!fn && sbUser.email) {
+            const prefix = sbUser.email.split('@')[0]
+            fn = prefix.charAt(0).toUpperCase() + prefix.slice(1).replace(/[^a-zA-Z]/g, '')
+          }
+
+          if (!fn) fn = 'Admin'
+
+          const fullName = `${fn}${ln ? ` ${ln}` : ''}`.trim()
+          const userRole = data?.role || userMeta.role || 'Admin'
 
           setCurrentUser({
             id: sbUser.id,
             email: sbUser.email,
-            name: userName,
+            name: fullName,
+            firstName: fn,
+            lastName: ln,
             role: userRole,
             avatar: null,
           })
@@ -68,11 +89,33 @@ export function UserProvider({ children }) {
           realtimeChannel = setupRealtimeSubscription(sbUser.id)
         } catch (err) {
           console.error('Error fetching user profile from public.users:', err)
+
+          let fn = userMeta.first_name || ''
+          let ln = userMeta.last_name || ''
+
+          if (!fn && (userMeta.full_name || userMeta.name)) {
+            const rawName = (userMeta.full_name || userMeta.name).trim()
+            const parts = rawName.split(' ')
+            fn = parts[0]
+            ln = parts.slice(1).join(' ')
+          }
+
+          if (!fn && sbUser.email) {
+            const prefix = sbUser.email.split('@')[0]
+            fn = prefix.charAt(0).toUpperCase() + prefix.slice(1).replace(/[^a-zA-Z]/g, '')
+          }
+
+          if (!fn) fn = 'Admin'
+
+          const fullName = `${fn}${ln ? ` ${ln}` : ''}`.trim()
+
           setCurrentUser({
             id: sbUser.id,
             email: sbUser.email,
-            name: sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || sbUser.email.split('@')[0],
-            role: sbUser.user_metadata?.role || 'Staff',
+            name: fullName,
+            firstName: fn,
+            lastName: ln,
+            role: userMeta.role || 'Admin',
             avatar: null,
           })
           syncAllStores(sbUser.id)

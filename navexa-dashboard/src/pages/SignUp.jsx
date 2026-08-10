@@ -6,7 +6,8 @@ import { useRouter } from '../context/RouterContext'
 export default function SignUpPage() {
   const { navigate } = useRouter()
   
-  const [fullName, setFullName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -21,8 +22,11 @@ export default function SignUpPage() {
 
   const validate = () => {
     const errs = {}
-    if (!fullName.trim()) {
-      errs.fullName = 'Full Name is required.'
+    if (!firstName.trim()) {
+      errs.firstName = 'First Name is required.'
+    }
+    if (!lastName.trim()) {
+      errs.lastName = 'Last Name is required.'
     }
     if (!email) {
       errs.email = 'Email address is required.'
@@ -58,12 +62,17 @@ export default function SignUpPage() {
     setIsSubmitting(true)
 
     try {
+      const full = `${firstName.trim()} ${lastName.trim()}`.trim()
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
           data: {
-            full_name: fullName.trim()
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            full_name: full,
+            name: full,
+            role: 'Admin',
           }
         }
       })
@@ -75,12 +84,28 @@ export default function SignUpPage() {
           setAuthError(error.message || 'Failed to create your account. Please try again.')
         }
         setIsSubmitting(false)
-      } else if (data?.session) {
-        setIsSubmitting(false)
-        navigate('Dashboard')
       } else {
-        setIsSuccess(true)
-        setIsSubmitting(false)
+        if (data?.user) {
+          try {
+            await supabase.from('users').upsert({
+              id: data.user.id,
+              name: full,
+              first_name: firstName.trim(),
+              last_name: lastName.trim(),
+              email: email.trim(),
+              role: 'Admin',
+            })
+          } catch (dbErr) {
+            console.warn('Upsert to users table failed silently:', dbErr)
+          }
+        }
+        if (data?.session) {
+          setIsSubmitting(false)
+          navigate('Dashboard')
+        } else {
+          setIsSuccess(true)
+          setIsSubmitting(false)
+        }
       }
     } catch (err) {
       console.error('Sign up exception:', err)
@@ -147,34 +172,65 @@ export default function SignUpPage() {
 
         {/* Sign Up Form */}
         <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
-          {/* Full Name field */}
-          <div className="space-y-1.5">
-            <label htmlFor="full-name" className="block text-xs font-bold text-ink">
-              Full Name <span className="text-rose-500">*</span>
-            </label>
-            <input
-              id="full-name"
-              name="name"
-              type="text"
-              autoComplete="name"
-              required
-              value={fullName}
-              onChange={(e) => {
-                setFullName(e.target.value)
-                if (errors.fullName) setErrors(prev => ({ ...prev, fullName: null }))
-              }}
-              placeholder="e.g. Rahul Sharma"
-              className={`w-full rounded-xl border bg-bg px-3.5 py-2.5 text-xs sm:text-sm text-ink outline-none transition-all focus:bg-surface ${
-                errors.fullName
-                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
-                  : 'border-line focus:border-primary focus:ring-2 focus:ring-primary/15'
-              }`}
-            />
-            {errors.fullName && (
-              <p className="mt-1 text-[11px] font-semibold text-rose-600">
-                {errors.fullName}
-              </p>
-            )}
+          {/* First Name & Last Name fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="space-y-1.5">
+              <label htmlFor="first-name" className="block text-xs font-bold text-ink">
+                First Name <span className="text-rose-500">*</span>
+              </label>
+              <input
+                id="first-name"
+                name="firstName"
+                type="text"
+                autoComplete="given-name"
+                required
+                value={firstName}
+                onChange={(e) => {
+                  setFirstName(e.target.value)
+                  if (errors.firstName) setErrors(prev => ({ ...prev, firstName: null }))
+                }}
+                placeholder="e.g. Rahul"
+                className={`w-full rounded-xl border bg-bg px-3.5 py-2.5 text-xs sm:text-sm text-ink outline-none transition-all focus:bg-surface ${
+                  errors.firstName
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
+                    : 'border-line focus:border-primary focus:ring-2 focus:ring-primary/15'
+                }`}
+              />
+              {errors.firstName && (
+                <p className="mt-1 text-[11px] font-semibold text-rose-600">
+                  {errors.firstName}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="last-name" className="block text-xs font-bold text-ink">
+                Last Name <span className="text-rose-500">*</span>
+              </label>
+              <input
+                id="last-name"
+                name="lastName"
+                type="text"
+                autoComplete="family-name"
+                required
+                value={lastName}
+                onChange={(e) => {
+                  setLastName(e.target.value)
+                  if (errors.lastName) setErrors(prev => ({ ...prev, lastName: null }))
+                }}
+                placeholder="e.g. Sharma"
+                className={`w-full rounded-xl border bg-bg px-3.5 py-2.5 text-xs sm:text-sm text-ink outline-none transition-all focus:bg-surface ${
+                  errors.lastName
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
+                    : 'border-line focus:border-primary focus:ring-2 focus:ring-primary/15'
+                }`}
+              />
+              {errors.lastName && (
+                <p className="mt-1 text-[11px] font-semibold text-rose-600">
+                  {errors.lastName}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Email field */}

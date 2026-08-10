@@ -19,6 +19,7 @@ import ReportsPage from './pages/Reports'
 import NotificationsPage from './pages/Notifications'
 import SearchResultsPage from './pages/SearchResults'
 import SettingsPage from './pages/Settings'
+import UserProfilePage from './pages/UserProfile'
 import ActivityLogPage from './pages/ActivityLog'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import NotFoundPage from './components/ui/NotFoundPage'
@@ -97,7 +98,7 @@ function AppContent() {
       case 'Users':
         return <PlaceholderPage title="Users" icon={Shield} desc="Manage dispatcher accounts, driver profiles, and system access." />
       case 'Profile':
-        return <PlaceholderPage title="Profile" icon={User} desc="Manage user profile details and personal preferences." />
+        return <UserProfilePage />
       case 'Settings':
         return <SettingsPage />
       case 'CompanyProfile':

@@ -109,15 +109,21 @@ export default function Dashboard({ onNavigate }) {
           </div>
 
           <div onClick={handleGoToInvoices} className="cursor-pointer">
-            <StatCard
-              icon={FileText}
-              title="Receivables"
-              value={invoiceStats.unpaidCount > 0 ? formatINR(invoiceStats.unpaidAmount) : invoiceStats.total}
-              infoText={`${invoiceStats.unpaidCount} Unpaid Invoices`}
-              sentiment={invoiceStats.unpaidCount > 0 ? 'warning' : 'positive'}
-              direction="neutral"
-              format={invoiceStats.unpaidCount > 0 ? 'currency' : 'plain'}
-            />
+            {(() => {
+              const unpaidCount = (invoiceStats?.pendingCount || 0) + (invoiceStats?.overdueCount || 0)
+              const unpaidAmount = Number(invoiceStats?.totalPendingReceivables || 0)
+              return (
+                <StatCard
+                  icon={FileText}
+                  title="Receivables"
+                  value={unpaidCount > 0 ? formatINR(unpaidAmount) : (invoiceStats?.total || 0)}
+                  infoText={unpaidCount > 0 ? `${unpaidCount} Unpaid Invoices` : 'All Invoices Paid'}
+                  sentiment={unpaidCount > 0 ? 'warning' : 'positive'}
+                  direction="neutral"
+                  format={unpaidCount > 0 ? 'currency' : 'plain'}
+                />
+              )
+            })()}
           </div>
         </div>
       </section>
