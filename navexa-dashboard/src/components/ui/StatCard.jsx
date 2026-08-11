@@ -1,4 +1,5 @@
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import AnimatedNumber from './AnimatedNumber'
 
 const formatINR = (n) => {
   if (n === null || n === undefined) return '₹0'
@@ -21,7 +22,7 @@ export default function StatCard({
   periodText = 'vs prev month'
 }) {
   const isUp = direction === 'up'
-  const displayValue = format === 'currency' ? formatINR(value) : value
+  const numericVal = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]+/g, ''))
 
   // Card container hierarchy styling
   const cardStyle = highlighted
@@ -49,7 +50,7 @@ export default function StatCard({
 
   return (
     <div
-      className={`group relative w-full h-full flex flex-col justify-between rounded-2xl p-4 sm:p-4.5 shadow-xs transition-all duration-150 hover:shadow-sm ${cardStyle}`}
+      className={`group relative w-full h-full flex flex-col justify-between rounded-2xl p-4 sm:p-4.5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card ${cardStyle}`}
     >
       {/* Top Row: Label & Icon Container */}
       <div className="flex items-center justify-between">
@@ -61,7 +62,17 @@ export default function StatCard({
 
       {/* Middle Row: Main Metric Value */}
       <div className="my-2.5">
-        <p className="num text-xl sm:text-2xl font-extrabold tracking-tight text-ink">{displayValue}</p>
+        <p className="num text-xl sm:text-2xl font-extrabold tracking-tight text-ink">
+          {!isNaN(numericVal) && typeof value !== 'string' ? (
+            <AnimatedNumber
+              value={numericVal}
+              prefix={format === 'currency' ? '₹' : ''}
+              formatter={format === 'currency' ? formatINR : undefined}
+            />
+          ) : (
+            format === 'currency' ? formatINR(value) : value
+          )}
+        </p>
       </div>
 
       {/* Bottom Row: Secondary Context & Trend Badge */}
