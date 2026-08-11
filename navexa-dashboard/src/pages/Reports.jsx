@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import StatCard from '../components/ui/StatCard'
 import ReportPrintModal from '../components/reports/ReportPrintModal'
+import ProfitLossPrintModal from '../components/reports/ProfitLossPrintModal'
 import {
   DATE_RANGES, getFilteredReportData, computeBusinessOverview,
   computeFinancialPerformance, computeTripPerformance, computeCustomerPerformance,
@@ -31,6 +32,7 @@ export default function ReportsPage() {
   // Detail Modal Drawer State
   const [activeDetailModal, setActiveDetailModal] = useState(null) // 'revenue' | 'expenses' | 'trips' | 'receivables'
   const [showPrintModal, setShowPrintModal] = useState(false)
+  const [showPnlModal, setShowPnlModal] = useState(false)
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false)
 
   // Subscription refresh state
@@ -157,6 +159,14 @@ export default function ReportsPage() {
               </div>
             )}
           </div>
+
+          {/* Generate P&L PDF Button */}
+          <button
+            onClick={() => setShowPnlModal(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-primary/30 bg-primary-50 px-3.5 py-2 text-xs font-extrabold text-primary hover:bg-primary-100 transition-colors cursor-pointer shadow-xs"
+          >
+            <Scale size={15} /> Generate P&L PDF
+          </button>
 
           {/* Print PDF Report Button */}
           <button
@@ -468,6 +478,16 @@ export default function ReportsPage() {
         overview={overview}
         vehicles={vehiclePerf}
         receivables={filtered.invoices.filter(i => i.paymentStatus !== 'Paid' && i.paymentStatus !== 'Cancelled')}
+        dateRangeLabel={dateLabel}
+      />
+
+      {/* PROFIT & LOSS PDF MODAL */}
+      <ProfitLossPrintModal
+        isOpen={showPnlModal}
+        onClose={() => setShowPnlModal(false)}
+        overview={overview}
+        expenseBreakdown={expenseBreakdown}
+        vehiclePerf={vehiclePerf}
         dateRangeLabel={dateLabel}
       />
 

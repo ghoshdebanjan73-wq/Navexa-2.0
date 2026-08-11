@@ -2,17 +2,19 @@ import { useState, useEffect } from 'react'
 import {
   X, User, Phone, Mail, MapPin, Building, MessageSquare, Calendar,
   CreditCard, Route, CheckCircle2, AlertTriangle, Edit3, Trash2,
-  TrendingUp, Compass, Clock, ArrowRight, ShieldCheck
+  TrendingUp, Compass, Clock, ArrowRight, ShieldCheck, Printer, FileText
 } from 'lucide-react'
 import { getCustomer360Stats, getInitials } from '../../data/customerStore'
-import { formatINR, subscribeTrips } from '../../data/tripStore'
+import { formatINR, subscribeTrips, liveTrips } from '../../data/tripStore'
 import { liveInvoices, subscribeInvoices } from '../../data/invoiceStore'
 import TripDetailPanel from '../trips/TripDetailPanel'
 import AddTripModal from '../trips/AddTripModal'
+import CustomerStatementModal from '../reports/CustomerStatementModal'
 
 export default function CustomerDetailPanel({ customer, isOpen, onClose, onEdit, onDelete, isAdmin, user }) {
   const [selectedTrip, setSelectedTrip] = useState(null)
   const [showAddTripModal, setShowAddTripModal] = useState(false)
+  const [showStatementModal, setShowStatementModal] = useState(false)
   const [stats, setStats] = useState(null)
 
   useEffect(() => {
@@ -355,23 +357,32 @@ export default function CustomerDetailPanel({ customer, isOpen, onClose, onEdit,
         </div>
 
         {/* Footer Actions */}
-        {isAdmin && (
-          <div className="sticky bottom-0 bg-surface border-t border-line p-4 flex items-center gap-3">
-            <button
-              onClick={() => { onClose(); onEdit(customer) }}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary-50 text-primary border border-primary/20 px-4 py-2.5 text-xs font-bold hover:bg-primary-100 transition-colors cursor-pointer"
-            >
-              <Edit3 size={15} /> Edit Customer
-            </button>
+        <div className="sticky bottom-0 bg-surface border-t border-line p-4 flex items-center gap-2.5">
+          <button
+            onClick={() => setShowStatementModal(true)}
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 text-white px-3 py-2.5 text-xs font-bold hover:bg-slate-800 transition-colors cursor-pointer shadow-xs"
+          >
+            <Printer size={15} /> Statement PDF
+          </button>
 
-            <button
-              onClick={() => { onClose(); onDelete(customer) }}
-              className="flex items-center justify-center gap-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 px-4 py-2.5 text-xs font-bold hover:bg-rose-100 transition-colors cursor-pointer"
-            >
-              <Trash2 size={15} /> Delete
-            </button>
-          </div>
-        )}
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => { onClose(); onEdit(customer) }}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-primary-50 text-primary border border-primary/20 px-3 py-2.5 text-xs font-bold hover:bg-primary-100 transition-colors cursor-pointer"
+              >
+                <Edit3 size={15} /> Edit
+              </button>
+
+              <button
+                onClick={() => { onClose(); onDelete(customer) }}
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 px-3 py-2.5 text-xs font-bold hover:bg-rose-100 transition-colors cursor-pointer"
+              >
+                <Trash2 size={15} /> Delete
+              </button>
+            </>
+          )}
+        </div>
 
       </div>
 
@@ -393,6 +404,15 @@ export default function CustomerDetailPanel({ customer, isOpen, onClose, onEdit,
           user={user}
         />
       )}
+
+      {/* Customer Statement PDF Modal */}
+      <CustomerStatementModal
+        isOpen={showStatementModal}
+        onClose={() => setShowStatementModal(false)}
+        customer={customer}
+        invoices={liveInvoices}
+        trips={liveTrips}
+      />
 
     </div>
   )
