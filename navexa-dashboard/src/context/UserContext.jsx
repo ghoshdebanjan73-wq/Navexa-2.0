@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { syncAllStores, setupRealtimeSubscription } from '../data/syncManager'
+import { logAuditEvent } from '../data/auditStore'
 
 // Centralized mock user records for Navexa
 export const MOCK_USERS = {
@@ -148,6 +149,22 @@ export function UserProvider({ children }) {
 
     // 2. Listen to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        const u = session?.user
+        if (u) {
+          const userMeta = u.user_metadata || {}
+          const name = userMeta.full_name || userMeta.name || userMeta.first_name || u.email?.split('@')[0] || 'User'
+          logAuditEvent({
+            action: 'LOGIN',
+            entityType: 'Session',
+            entityId: u.id,
+            entityLabel: 'User Session',
+            description: `User ${name} (${u.email}) logged into Navexa successfully.`,
+            user: { id: u.id, name, email: u.email, role: userMeta.role || 'Admin' }
+          })
+        }
+      }
+
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         // Clean URL fragment hash if redirect contained access_token or confirmation parameters
         if (typeof window !== 'undefined' && window.location.hash && (window.location.hash.includes('access_token') || window.location.hash.includes('type=signup'))) {
@@ -177,6 +194,16 @@ export function UserProvider({ children }) {
 
   const signOut = async () => {
     try {
+      if (currentUser) {
+        logAuditEvent({
+          action: 'LOGOUT',
+          entityType: 'Session',
+          entityId: currentUser.id || 'U-LOGOUT',
+          entityLabel: 'User Session',
+          description: `User ${currentUser.name} (${currentUser.email || 'Admin'}) signed out of Navexa.`,
+          user: currentUser,
+        })
+      }
       const { error } = await supabase.auth.signOut()
       if (error) throw error
       setCurrentUser(null)

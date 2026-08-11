@@ -6,6 +6,7 @@ import { syncPayments } from './paymentStore'
 import { syncTransactions } from './transactionStore'
 import { syncDrivers } from './driverStore'
 import { syncInvoices } from './invoiceStore'
+import { syncAuditLogs } from './auditStore'
 import { supabase } from '../lib/supabase'
 
 export async function syncAllStores(userId) {
@@ -23,12 +24,13 @@ export async function syncAllStores(userId) {
       syncInvoices(userId),
     ])
 
-    // 3. Sync dependent collections (Payments, Maintenance, Transactions, Drivers)
+    // 3. Sync dependent collections (Payments, Maintenance, Transactions, Drivers, Audit Logs)
     await Promise.all([
       syncMaintenance(userId),
       syncPayments(userId),
       syncTransactions(userId),
-      syncDrivers(userId)
+      syncDrivers(userId),
+      syncAuditLogs(userId)
     ])
   } catch (err) {
     console.error('Failed to sync data with Supabase:', err)

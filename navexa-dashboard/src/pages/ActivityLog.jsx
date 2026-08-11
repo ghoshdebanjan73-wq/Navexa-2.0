@@ -63,6 +63,8 @@ export default function ActivityLogPage() {
 
   const getActionBadgeClass = (action) => {
     switch (action) {
+      case 'LOGIN': return 'bg-emerald-100 text-emerald-900 border-emerald-300 font-extrabold'
+      case 'LOGOUT': return 'bg-amber-100 text-amber-900 border-amber-300 font-extrabold'
       case 'CREATE': return 'bg-emerald-50 text-emerald-800 border-emerald-200'
       case 'UPDATE': return 'bg-sky-50 text-sky-800 border-sky-200'
       case 'STATUS_CHANGE': return 'bg-purple-50 text-purple-800 border-purple-200'
@@ -80,6 +82,9 @@ export default function ActivityLogPage() {
       case 'Vehicle': return <Car size={14} className="text-primary" />
       case 'Invoice': return <FileText size={14} className="text-primary" />
       case 'Finance': return <DollarSign size={14} className="text-primary" />
+      case 'Session':
+      case 'Auth':
+      case 'User': return <UserCheck size={14} className="text-primary" />
       case 'Settings': return <Settings size={14} className="text-primary" />
       default: return <History size={14} className="text-primary" />
     }
@@ -111,7 +116,7 @@ export default function ActivityLogPage() {
           <h1 className="text-xl sm:text-2xl font-extrabold text-ink tracking-tight flex items-center gap-2">
             <History className="text-primary" size={24} /> Activity Log
           </h1>
-          <p className="text-xs text-ink-soft mt-0.5">Track important business changes made across Navexa.</p>
+          <p className="text-xs text-ink-soft mt-0.5">Track important business changes and user sign-in/out events across Navexa.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -146,6 +151,8 @@ export default function ActivityLogPage() {
             className="rounded-xl border border-line bg-bg px-3 py-2 font-bold text-ink cursor-pointer"
           >
             <option value="All">All Actions</option>
+            <option value="LOGIN">LOGIN</option>
+            <option value="LOGOUT">LOGOUT</option>
             <option value="CREATE">CREATE</option>
             <option value="UPDATE">UPDATE</option>
             <option value="STATUS_CHANGE">STATUS_CHANGE</option>
@@ -171,7 +178,7 @@ export default function ActivityLogPage() {
       {/* Module Filter Tabs */}
       <div className="flex flex-wrap items-center gap-1.5 border-b border-line pb-3">
         {[
-          'All', 'Customers', 'Trips', 'Drivers', 'Vehicles', 'Invoice', 'Finance', 'Settings'
+          'All', 'Session', 'Customers', 'Trips', 'Drivers', 'Vehicles', 'Invoice', 'Finance', 'Settings'
         ].map(mod => (
           <button
             key={mod}

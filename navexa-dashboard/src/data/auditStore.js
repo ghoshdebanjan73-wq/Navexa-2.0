@@ -45,6 +45,43 @@ function notifyAuditListeners() {
   listeners.forEach(fn => fn(liveAuditLogs))
 }
 
+/** Cloud sync audit logs from Supabase */
+export async function syncAuditLogs(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+
+    if (data && data.length > 0) {
+      const mapped = data.map(item => ({
+        id: item.id,
+        user_id: item.user_id,
+        user_name: item.user_name || 'System User',
+        user_role: item.user_role || 'Admin',
+        action: item.action,
+        entity_type: item.entity_type,
+        entity_id: item.entity_id || '',
+        entity_label: item.entity_label || item.entity_type,
+        description: item.description,
+        old_values: item.old_values,
+        new_values: item.new_values,
+        metadata: item.metadata,
+        created_at: item.created_at,
+      }))
+
+      liveAuditLogs.length = 0
+      liveAuditLogs.push(...mapped)
+      persistLogs()
+      notifyAuditListeners()
+    }
+  } catch (err) {
+    console.error('Error syncing audit logs from Supabase:', err)
+  }
+}
+
 /**
  * Log an audit event
  */
