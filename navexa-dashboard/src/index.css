@@ -63,19 +63,48 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  /* Standardized Page Container */
+  /* Standardized Page Container with Spring FadeUp */
   .page-container {
-    @apply mx-auto max-w-[1440px] w-full px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 pb-28 md:pb-10 space-y-4 sm:space-y-6 animate-fadeIn;
+    @apply mx-auto max-w-[1440px] w-full px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 pb-28 md:pb-10 space-y-4 sm:space-y-6 animate-fadeUp;
   }
 
-  /* Standard Card Surface */
+  /* Standard Card Surface with Elevation Physics */
   .card-surface {
-    @apply rounded-2xl border border-line bg-surface p-4 sm:p-5 shadow-xs transition-all duration-150;
+    @apply rounded-2xl border border-line bg-surface p-4 sm:p-5 shadow-xs transition-all duration-200 ease-out;
   }
 
   .card-interactive {
-    @apply card-surface hover:border-slate-300 hover:shadow-card active:scale-[0.995] cursor-pointer;
+    @apply card-surface hover:border-slate-300 hover:shadow-card hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.992] cursor-pointer transition-all duration-200;
   }
+
+  /* Button Micro-Interactions */
+  .btn-spring {
+    @apply transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.97] active:duration-75 cursor-pointer;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-primary-hover hover:shadow-md active:scale-[0.97] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-xs sm:text-sm font-bold text-ink hover:bg-slate-50 hover:border-slate-300 active:scale-[0.97] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  /* Modal & Sheet Overlays */
+  .modal-backdrop {
+    @apply fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-md transition-opacity duration-300 animate-fadeIn;
+  }
+
+  .modal-dialog {
+    @apply relative w-full max-w-lg rounded-2xl border border-line/80 bg-surface p-5 sm:p-6 shadow-pop animate-modalPop;
+  }
+
+  /* Stagger Animations for Lists/Grids */
+  .stagger-1 { animation-delay: 50ms; }
+  .stagger-2 { animation-delay: 100ms; }
+  .stagger-3 { animation-delay: 150ms; }
+  .stagger-4 { animation-delay: 200ms; }
+  .stagger-5 { animation-delay: 250ms; }
 
   /* Standardized Typography Classes */
   .page-title {
@@ -98,17 +127,17 @@
     @apply text-[11px] text-ink-soft mt-1 leading-normal;
   }
 
-  /* Standard Form Control Styles */
+  /* Standard Form Control Styles with Focus Glow */
   .form-input {
-    @apply w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-xs sm:text-sm font-medium text-ink outline-none transition-all duration-150 focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50 placeholder:text-ink-soft/60;
+    @apply w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-xs sm:text-sm font-medium text-ink outline-none transition-all duration-200 focus:bg-surface focus:border-accent focus:ring-2 focus:ring-accent/15 disabled:opacity-50 placeholder:text-ink-soft/60;
   }
 
   .form-select {
-    @apply w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-xs sm:text-sm font-medium text-ink outline-none transition-all duration-150 focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50 cursor-pointer;
+    @apply w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-xs sm:text-sm font-medium text-ink outline-none transition-all duration-200 focus:bg-surface focus:border-accent focus:ring-2 focus:ring-accent/15 disabled:opacity-50 cursor-pointer;
   }
 
   .form-textarea {
-    @apply w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-xs sm:text-sm font-medium text-ink outline-none transition-all duration-150 focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50 resize-none placeholder:text-ink-soft/60;
+    @apply w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-xs sm:text-sm font-medium text-ink outline-none transition-all duration-200 focus:bg-surface focus:border-accent focus:ring-2 focus:ring-accent/15 disabled:opacity-50 resize-none placeholder:text-ink-soft/60;
   }
 
   /* Signature motif: dashed route line */
