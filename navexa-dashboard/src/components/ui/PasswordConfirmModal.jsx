@@ -57,8 +57,8 @@ export default function PasswordConfirmModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-      <div className="relative w-full max-w-md rounded-2xl border border-line bg-surface p-5 sm:p-6 shadow-pop">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/45 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-md rounded-2xl border border-line bg-surface p-5 sm:p-6 shadow-pop animate-modalPop">
         {/* Close Button */}
         <button
           onClick={handleClose}

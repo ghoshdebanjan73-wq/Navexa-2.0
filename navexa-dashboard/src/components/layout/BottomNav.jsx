@@ -65,12 +65,17 @@ export default function BottomNav() {
           type="button"
           onClick={() => handleNav('Dashboard')}
           aria-label="Dashboard"
-          className={`flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] font-semibold transition-colors cursor-pointer ${
-            activeRoute === 'Dashboard' ? 'text-primary font-bold' : 'text-ink-soft hover:text-ink'
-          }`}
+          className="relative flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] transition-all duration-200 ease-out active:scale-95 cursor-pointer"
         >
-          <LayoutGrid size={18} strokeWidth={activeRoute === 'Dashboard' ? 2.5 : 2} />
-          <span>Dashboard</span>
+          <span className={`absolute inset-x-1 top-1 bottom-1 rounded-xl bg-primary-50 transition-all duration-200 ease-out ${
+            activeRoute === 'Dashboard' ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'
+          }`} />
+          <LayoutGrid size={18} strokeWidth={activeRoute === 'Dashboard' ? 2.5 : 2} className={`relative z-10 transition-all duration-200 ${
+            activeRoute === 'Dashboard' ? 'text-primary scale-110' : 'text-ink-soft hover:text-ink scale-100'
+          }`} />
+          <span className={`relative z-10 transition-colors duration-200 ${
+            activeRoute === 'Dashboard' ? 'text-primary font-extrabold' : 'text-ink-soft font-semibold'
+          }`}>Dashboard</span>
         </button>
 
         {/* 2. Trips */}
@@ -78,12 +83,17 @@ export default function BottomNav() {
           type="button"
           onClick={() => handleNav('Trips')}
           aria-label="Trips"
-          className={`flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] font-semibold transition-colors cursor-pointer ${
-            activeRoute === 'Trips' ? 'text-primary font-bold' : 'text-ink-soft hover:text-ink'
-          }`}
+          className="relative flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] transition-all duration-200 ease-out active:scale-95 cursor-pointer"
         >
-          <Route size={18} strokeWidth={activeRoute === 'Trips' ? 2.5 : 2} />
-          <span>Trips</span>
+          <span className={`absolute inset-x-1 top-1 bottom-1 rounded-xl bg-primary-50 transition-all duration-200 ease-out ${
+            activeRoute === 'Trips' ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'
+          }`} />
+          <Route size={18} strokeWidth={activeRoute === 'Trips' ? 2.5 : 2} className={`relative z-10 transition-all duration-200 ${
+            activeRoute === 'Trips' ? 'text-primary scale-110' : 'text-ink-soft hover:text-ink scale-100'
+          }`} />
+          <span className={`relative z-10 transition-colors duration-200 ${
+            activeRoute === 'Trips' ? 'text-primary font-extrabold' : 'text-ink-soft font-semibold'
+          }`}>Trips</span>
         </button>
 
         {/* 3. Invoices */}
@@ -91,12 +101,17 @@ export default function BottomNav() {
           type="button"
           onClick={() => handleNav('Invoices')}
           aria-label="Invoices"
-          className={`flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] font-semibold transition-colors cursor-pointer ${
-            activeRoute === 'Invoices' ? 'text-primary font-bold' : 'text-ink-soft hover:text-ink'
-          }`}
+          className="relative flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] transition-all duration-200 ease-out active:scale-95 cursor-pointer"
         >
-          <FileText size={18} strokeWidth={activeRoute === 'Invoices' ? 2.5 : 2} />
-          <span>Invoices</span>
+          <span className={`absolute inset-x-1 top-1 bottom-1 rounded-xl bg-primary-50 transition-all duration-200 ease-out ${
+            activeRoute === 'Invoices' ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'
+          }`} />
+          <FileText size={18} strokeWidth={activeRoute === 'Invoices' ? 2.5 : 2} className={`relative z-10 transition-all duration-200 ${
+            activeRoute === 'Invoices' ? 'text-primary scale-110' : 'text-ink-soft hover:text-ink scale-100'
+          }`} />
+          <span className={`relative z-10 transition-colors duration-200 ${
+            activeRoute === 'Invoices' ? 'text-primary font-extrabold' : 'text-ink-soft font-semibold'
+          }`}>Invoices</span>
         </button>
 
         {/* 3. Finance / Vehicles for Staff */}
@@ -105,24 +120,34 @@ export default function BottomNav() {
             type="button"
             onClick={() => handleNav('Finance')}
             aria-label="Finance"
-            className={`flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] font-semibold transition-colors cursor-pointer ${
-              activeRoute === 'Finance' ? 'text-primary font-bold' : 'text-ink-soft hover:text-ink'
-            }`}
+            className="relative flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] transition-all duration-200 ease-out active:scale-95 cursor-pointer"
           >
-            <Receipt size={18} strokeWidth={activeRoute === 'Finance' ? 2.5 : 2} />
-            <span>Finance</span>
+            <span className={`absolute inset-x-1 top-1 bottom-1 rounded-xl bg-primary-50 transition-all duration-200 ease-out ${
+              activeRoute === 'Finance' ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'
+            }`} />
+            <Receipt size={18} strokeWidth={activeRoute === 'Finance' ? 2.5 : 2} className={`relative z-10 transition-all duration-200 ${
+              activeRoute === 'Finance' ? 'text-primary scale-110' : 'text-ink-soft hover:text-ink scale-100'
+            }`} />
+            <span className={`relative z-10 transition-colors duration-200 ${
+              activeRoute === 'Finance' ? 'text-primary font-extrabold' : 'text-ink-soft font-semibold'
+            }`}>Finance</span>
           </button>
         ) : (
           <button
             type="button"
             onClick={() => handleNav('Vehicles')}
             aria-label="Vehicles"
-            className={`flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] font-semibold transition-colors cursor-pointer ${
-              activeRoute === 'Vehicles' ? 'text-primary font-bold' : 'text-ink-soft hover:text-ink'
-            }`}
+            className="relative flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] transition-all duration-200 ease-out active:scale-95 cursor-pointer"
           >
-            <Car size={18} strokeWidth={activeRoute === 'Vehicles' ? 2.5 : 2} />
-            <span>Vehicles</span>
+            <span className={`absolute inset-x-1 top-1 bottom-1 rounded-xl bg-primary-50 transition-all duration-200 ease-out ${
+              activeRoute === 'Vehicles' ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'
+            }`} />
+            <Car size={18} strokeWidth={activeRoute === 'Vehicles' ? 2.5 : 2} className={`relative z-10 transition-all duration-200 ${
+              activeRoute === 'Vehicles' ? 'text-primary scale-110' : 'text-ink-soft hover:text-ink scale-100'
+            }`} />
+            <span className={`relative z-10 transition-colors duration-200 ${
+              activeRoute === 'Vehicles' ? 'text-primary font-extrabold' : 'text-ink-soft font-semibold'
+            }`}>Vehicles</span>
           </button>
         )}
 
@@ -132,12 +157,17 @@ export default function BottomNav() {
             type="button"
             onClick={() => handleNav('Customers')}
             aria-label="Customers"
-            className={`flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] font-semibold transition-colors cursor-pointer ${
-              activeRoute === 'Customers' ? 'text-primary font-bold' : 'text-ink-soft hover:text-ink'
-            }`}
+            className="relative flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] transition-all duration-200 ease-out active:scale-95 cursor-pointer"
           >
-            <Users size={18} strokeWidth={activeRoute === 'Customers' ? 2.5 : 2} />
-            <span>Customers</span>
+            <span className={`absolute inset-x-1 top-1 bottom-1 rounded-xl bg-primary-50 transition-all duration-200 ease-out ${
+              activeRoute === 'Customers' ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'
+            }`} />
+            <Users size={18} strokeWidth={activeRoute === 'Customers' ? 2.5 : 2} className={`relative z-10 transition-all duration-200 ${
+              activeRoute === 'Customers' ? 'text-primary scale-110' : 'text-ink-soft hover:text-ink scale-100'
+            }`} />
+            <span className={`relative z-10 transition-colors duration-200 ${
+              activeRoute === 'Customers' ? 'text-primary font-extrabold' : 'text-ink-soft font-semibold'
+            }`}>Customers</span>
           </button>
         )}
 
@@ -147,12 +177,17 @@ export default function BottomNav() {
           onClick={() => setMoreOpen(v => !v)}
           aria-label="More navigation"
           aria-expanded={moreOpen}
-          className={`flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] font-semibold transition-colors cursor-pointer ${
-            isMoreActive ? 'text-primary font-bold' : 'text-ink-soft hover:text-ink'
-          }`}
+          className="relative flex flex-1 flex-col items-center justify-center min-h-[44px] py-1 text-[10px] transition-all duration-200 ease-out active:scale-95 cursor-pointer"
         >
-          <Menu size={18} strokeWidth={isMoreActive ? 2.5 : 2} />
-          <span>More</span>
+          <span className={`absolute inset-x-1 top-1 bottom-1 rounded-xl bg-primary-50 transition-all duration-200 ease-out ${
+            isMoreActive ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'
+          }`} />
+          <Menu size={18} strokeWidth={isMoreActive ? 2.5 : 2} className={`relative z-10 transition-all duration-200 ${
+            isMoreActive ? 'text-primary scale-110' : 'text-ink-soft hover:text-ink scale-100'
+          }`} />
+          <span className={`relative z-10 transition-colors duration-200 ${
+            isMoreActive ? 'text-primary font-extrabold' : 'text-ink-soft font-semibold'
+          }`}>More</span>
         </button>
       </nav>
 

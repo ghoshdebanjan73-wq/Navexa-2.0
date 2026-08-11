@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
-import { CheckCircle, AlertCircle, Info, X } from 'lucide-react'
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react'
 
-export default function Toast({ message, type = 'success', onClose, duration = 4000 }) {
+export default function Toast({ message, type = 'success', onClose, duration = 3500 }) {
   useEffect(() => {
     if (!message) return
     const timer = setTimeout(() => {
@@ -12,32 +12,48 @@ export default function Toast({ message, type = 'success', onClose, duration = 4
 
   if (!message) return null
 
-  const isError = type === 'error'
-  const isInfo = type === 'info'
+  const getVariantStyles = () => {
+    switch (type) {
+      case 'error':
+        return {
+          container: 'bg-rose-900/95 text-white border-rose-700 shadow-rose-950/20',
+          icon: <AlertCircle size={18} className="shrink-0 text-rose-300" />,
+        }
+      case 'warning':
+        return {
+          container: 'bg-amber-900/95 text-white border-amber-700 shadow-amber-950/20',
+          icon: <AlertTriangle size={18} className="shrink-0 text-amber-300" />,
+        }
+      case 'info':
+        return {
+          container: 'bg-sky-900/95 text-white border-sky-700 shadow-sky-950/20',
+          icon: <Info size={18} className="shrink-0 text-sky-300" />,
+        }
+      default:
+        return {
+          container: 'bg-slate-900/95 text-white border-slate-800 shadow-slate-950/30',
+          icon: <CheckCircle2 size={18} className="shrink-0 text-emerald-400" />,
+        }
+    }
+  }
 
-  const bgStyles = isError
-    ? 'bg-rose-50 border-rose-200 text-rose-800'
-    : isInfo
-    ? 'bg-sky-50 border-sky-200 text-sky-800'
-    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-
-  const Icon = isError ? AlertCircle : isInfo ? Info : CheckCircle
+  const variant = getVariantStyles()
 
   return (
     <div
       role="status"
       aria-live="polite"
-      className={`fixed right-4 top-16 z-50 flex items-center gap-3 rounded-2xl border p-4 shadow-pop animate-slideDown max-w-sm ${bgStyles}`}
+      className={`fixed top-4 left-4 right-4 sm:left-auto sm:right-6 sm:top-16 z-50 flex items-center gap-3 rounded-2xl border p-3.5 sm:p-4 shadow-pop backdrop-blur-md animate-slideDown max-w-md ${variant.container}`}
     >
-      <Icon size={18} className="shrink-0" />
-      <span className="text-xs font-bold flex-1 leading-snug">{message}</span>
+      {variant.icon}
+      <span className="text-xs sm:text-sm font-semibold flex-1 leading-snug tracking-tight">{message}</span>
       {onClose && (
         <button
           onClick={onClose}
-          className="text-ink-soft hover:text-ink transition-colors cursor-pointer p-0.5"
+          className="text-slate-300 hover:text-white transition-colors cursor-pointer p-1 rounded-lg hover:bg-white/10"
           aria-label="Close notification"
         >
-          <X size={14} />
+          <X size={15} />
         </button>
       )}
     </div>

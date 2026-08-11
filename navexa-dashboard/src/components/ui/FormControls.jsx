@@ -21,7 +21,7 @@ export function FormHint({ children, className = '' }) {
 
 export function FormError({ children, className = '' }) {
   if (!children) return null
-  return <p className={`text-[11px] font-semibold text-rose-600 mt-1 leading-normal ${className}`}>{children}</p>
+  return <p className={`text-[11px] font-semibold text-rose-600 mt-1 leading-normal animate-slideDown ${className}`}>{children}</p>
 }
 
 export function FormField({ label, required, hint, error, children, className = '' }) {
