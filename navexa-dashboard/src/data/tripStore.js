@@ -9,6 +9,7 @@ import { addActivity } from './transactionStore.js'
 import { liveDrivers } from './driverStore.js'
 import { liveVehicles } from './vehicleStore.js'
 import { logAuditEvent } from './auditStore.js'
+import { autoGenerateInvoiceFromTrip } from './invoiceStore.js'
 import { supabase } from '../lib/supabase'
 
 const STORAGE_KEY = 'navexa_trips'
@@ -386,6 +387,13 @@ export async function addTrip(record, userId) {
 
   notify()
 
+  // Auto-generate invoice if trip created in started/active state
+  if (['Started', 'Passenger Picked Up', 'Ongoing'].includes(newTrip.status)) {
+    autoGenerateInvoiceFromTrip(newTrip, userId).catch(err => {
+      console.error('Auto invoice generation on trip creation error:', err)
+    })
+  }
+
   try {
     const { error } = await supabase.from('trips').insert({
       id: newTrip.id,
@@ -497,6 +505,13 @@ export async function updateTripStatus(id, newStatus, actualFare = null, userNam
   }
 
   notify()
+
+  // Auto-generate invoice when trip status progresses to Started or Completed
+  if (['Started', 'Passenger Picked Up', 'Ongoing', 'Completed'].includes(newStatus)) {
+    autoGenerateInvoiceFromTrip(updated, null).catch(err => {
+      console.error('Auto invoice generation on status update error:', err)
+    })
+  }
 
   try {
     const { error } = await supabase

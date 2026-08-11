@@ -195,9 +195,11 @@ export async function getCompanyInvoiceDetails() {
 }
 
 /**
- * Auto generate invoice from a completed or booked trip
+ * Auto generate invoice from a trip when started or completed
  */
 export async function autoGenerateInvoiceFromTrip(trip, userId) {
+  if (!trip) return null
+
   // Check if invoice already exists for this trip
   const existing = liveInvoices.find(inv => inv.tripId === trip.id)
   if (existing) {
@@ -215,7 +217,48 @@ export async function autoGenerateInvoiceFromTrip(trip, userId) {
 
   const totalFare = Number(trip.actualFare || trip.fare || 0)
   const isPaid = trip.paymentStatus === 'Paid'
-  const initialStatus = isPaid ? 'Paid' : 'Sent'
+  const isPartial = trip.paymentStatus === 'Partially Paid' || (Number(trip.amountPaid) > 0 && Number(trip.amountPaid) < totalFare) || (Number(trip.advanceAmount) > 0 && Number(trip.advanceAmount) < totalFare)
+
+  let amountPaid = 0
+  let balanceDue = totalFare
+  let paymentStatus = 'Sent'
+  let paymentMethod = ''
+  let payments = []
+
+  if (isPaid) {
+    amountPaid = totalFare
+    balanceDue = 0
+    paymentStatus = 'Paid'
+    paymentMethod = trip.paymentMethod || 'UPI'
+    payments = [{
+      id: `PAY-${Date.now()}-1`,
+      invoiceId: '',
+      paymentNumber: 'Payment #1',
+      amount: totalFare,
+      paymentMethod,
+      paymentDate: todayStr,
+      referenceNumber: `INIT-${trip.id}`,
+      collectedBy: 'System (Full Advance)',
+      notes: 'Full payment recorded at trip start',
+    }]
+  } else if (isPartial) {
+    const partialVal = Number(trip.amountPaid || trip.advanceAmount || Math.round(totalFare / 2))
+    amountPaid = Math.min(totalFare, partialVal)
+    balanceDue = Math.max(0, totalFare - amountPaid)
+    paymentStatus = balanceDue === 0 ? 'Paid' : 'Partially Paid'
+    paymentMethod = trip.paymentMethod || 'UPI'
+    payments = [{
+      id: `PAY-${Date.now()}-1`,
+      invoiceId: '',
+      paymentNumber: 'Payment #1',
+      amount: amountPaid,
+      paymentMethod,
+      paymentDate: todayStr,
+      referenceNumber: `ADV-${trip.id}`,
+      collectedBy: 'System (Partial Advance)',
+      notes: 'Partial advance payment recorded at trip start',
+    }]
+  }
 
   const newInvoice = {
     id: `INV-${Date.now()}`,
@@ -232,13 +275,14 @@ export async function autoGenerateInvoiceFromTrip(trip, userId) {
     taxRate: 0,
     taxAmount: 0,
     totalAmount: totalFare,
-    amountPaid: isPaid ? totalFare : 0,
-    balanceDue: isPaid ? 0 : totalFare,
-    paymentStatus: initialStatus,
-    paymentMethod: isPaid ? 'Bank Transfer' : '',
-    paymentDate: isPaid ? todayStr : null,
-    referenceNumber: isPaid ? `AUTO-${trip.id}` : '',
-    notes: trip.notes || `Invoice generated for trip ${trip.id}`,
+    amountPaid,
+    balanceDue,
+    paymentStatus,
+    paymentMethod,
+    paymentDate: amountPaid > 0 ? todayStr : null,
+    referenceNumber: amountPaid > 0 ? `AUTO-${trip.id}` : '',
+    payments,
+    notes: trip.notes || `Invoice generated automatically for trip ${trip.id}`,
     companyDetails,
     tripDetails: {
       pickupLocation: trip.pickupLocation,
@@ -254,6 +298,8 @@ export async function autoGenerateInvoiceFromTrip(trip, userId) {
     createdBy: 'System',
     createdAt: new Date().toISOString(),
   }
+
+  newInvoice.payments = newInvoice.payments.map(p => ({ ...p, invoiceId: newInvoice.id }))
 
   liveInvoices.unshift(newInvoice)
   notify()
@@ -280,6 +326,7 @@ export async function autoGenerateInvoiceFromTrip(trip, userId) {
       payment_method: newInvoice.paymentMethod,
       payment_date: newInvoice.paymentDate,
       reference_number: newInvoice.referenceNumber,
+      payments: newInvoice.payments,
       notes: newInvoice.notes,
       company_details: newInvoice.companyDetails,
       trip_details: newInvoice.tripDetails,
