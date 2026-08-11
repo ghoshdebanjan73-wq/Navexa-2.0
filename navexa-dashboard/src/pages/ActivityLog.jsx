@@ -137,7 +137,7 @@ export default function ActivityLogPage() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
             placeholder="Search by actor, action, description, record..."
-            className="h-9.5 w-full rounded-xl border border-line bg-bg pl-9 pr-3 text-xs font-semibold text-ink placeholder:text-ink-soft/80 focus:border-accent focus:outline-none"
+            className="h-9.5 w-full rounded-xl border border-line bg-bg pl-10 pr-3 text-xs font-semibold text-ink placeholder:text-ink-soft/80 focus:border-accent focus:outline-none"
           />
         </div>
 

@@ -251,7 +251,7 @@ export default function InvoicesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by invoice number (NVX-000001), customer, trip ID..."
-            className="w-full rounded-xl border border-line bg-bg pl-9.5 pr-8 py-2 text-xs sm:text-sm font-medium text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="w-full rounded-xl border border-line bg-bg pl-10 pr-8 py-2 text-xs sm:text-sm font-medium text-ink outline-none transition-all focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15"
           />
           {search && (
             <button

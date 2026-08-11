@@ -56,7 +56,7 @@ export default function SearchResultsPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search customers, trips, vehicles, drivers, invoices..."
-            className="h-10 w-full rounded-xl border border-line bg-surface pl-9.5 pr-4 text-xs font-bold text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+            className="h-10 w-full rounded-xl border border-line bg-surface pl-10 pr-4 text-xs font-bold text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
           />
         </div>
       </div>

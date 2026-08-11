@@ -161,7 +161,7 @@ export default function GlobalSearchDropdown({ isMobileOpen = false, onCloseMobi
           onKeyDown={handleKeyDown}
           aria-label="Global search"
           placeholder="Search trips, customers, vehicles..."
-          className="h-9 w-full rounded-lg border border-line bg-bg pl-8.5 pr-14 text-xs font-medium text-ink placeholder:text-ink-soft/80 transition-all focus:border-accent focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent/15"
+          className="h-9 w-full rounded-lg border border-line bg-bg pl-9 pr-14 text-xs font-medium text-ink placeholder:text-ink-soft/80 transition-all focus:border-accent focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent/15"
         />
 
         {/* Loading Spinner or Cmd+K Badge */}

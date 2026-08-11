@@ -324,7 +324,7 @@ export default function CompanyProfilePage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search settings..."
-              className="w-full rounded-xl border border-line bg-bg pl-9 pr-8 py-2 text-xs font-medium text-ink placeholder:text-ink-soft/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
+              className="w-full rounded-xl border border-line bg-bg pl-10 pr-8 py-2 text-xs font-medium text-ink placeholder:text-ink-soft/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
             />
             {searchQuery && (
               <button

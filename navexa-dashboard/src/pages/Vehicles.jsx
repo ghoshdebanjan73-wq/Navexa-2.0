@@ -273,13 +273,13 @@ export default function VehiclesPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-line bg-surface p-3.5 shadow-xs">
         {/* Instant Search Bar */}
         <div className="relative flex-1 min-w-[240px]">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-soft" />
+          <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-soft" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by vehicle name, registration number, brand..."
-            className="w-full rounded-xl border border-line bg-bg pl-9 pr-8 py-2 text-xs text-ink outline-none transition-all focus:bg-surface focus:border-primary"
+            className="w-full rounded-xl border border-line bg-bg pl-10 pr-8 py-2 text-xs sm:text-sm text-ink outline-none transition-all focus:bg-surface focus:border-primary"
           />
           {search && (
             <button
