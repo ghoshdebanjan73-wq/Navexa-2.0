@@ -3,10 +3,9 @@ import AnimatedNumber from './AnimatedNumber'
 
 const formatINR = (n) => {
   if (n === null || n === undefined) return '₹0'
-  if (typeof n === 'string' && (n.includes('₹') || n.includes('Rs'))) return n
-  const num = Number(n)
-  if (isNaN(num)) return '₹0'
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num)
+  const rawNum = typeof n === 'number' ? n : parseFloat(String(n).replace(/[^0-9.-]+/g, ''))
+  if (isNaN(rawNum)) return '₹0'
+  return '₹' + Math.round(rawNum).toLocaleString('en-IN')
 }
 
 export default function StatCard({
@@ -63,14 +62,22 @@ export default function StatCard({
       {/* Middle Row: Main Metric Value */}
       <div className="my-2.5">
         <p className="num text-xl sm:text-2xl font-extrabold tracking-tight text-ink">
-          {!isNaN(numericVal) && typeof value !== 'string' ? (
-            <AnimatedNumber
-              value={numericVal}
-              prefix={format === 'currency' ? '₹' : ''}
-              formatter={format === 'currency' ? formatINR : undefined}
-            />
+          {format === 'currency' ? (
+            !isNaN(numericVal) ? (
+              <AnimatedNumber
+                value={numericVal}
+                prefix="₹"
+                formatter={(val) => Math.round(val).toLocaleString('en-IN')}
+              />
+            ) : (
+              formatINR(value)
+            )
           ) : (
-            format === 'currency' ? formatINR(value) : value
+            !isNaN(numericVal) ? (
+              <AnimatedNumber value={numericVal} />
+            ) : (
+              value
+            )
           )}
         </p>
       </div>
