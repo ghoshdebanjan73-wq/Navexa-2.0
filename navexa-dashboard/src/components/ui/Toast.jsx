@@ -1,9 +1,19 @@
 import React, { useEffect } from 'react'
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react'
+import { playSuccessSound, playErrorSound, playNotificationSound } from '../../utils/soundEngine'
 
 export default function Toast({ message, type = 'success', onClose, duration = 3500 }) {
   useEffect(() => {
     if (!message) return
+
+    if (type === 'error' || type === 'warning') {
+      playErrorSound()
+    } else if (type === 'info') {
+      playNotificationSound()
+    } else {
+      playSuccessSound()
+    }
+
     const timer = setTimeout(() => {
       if (onClose) onClose()
     }, duration)

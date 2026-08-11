@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import {
   Settings, Building2, Sliders, FileText, Bell, Shield, Key, Save, Loader2,
-  CheckCircle2, AlertCircle, RefreshCw, User, Lock, Eye, EyeOff
+  CheckCircle2, AlertCircle, RefreshCw, User, Lock, Eye, EyeOff, Volume2, VolumeX
 } from 'lucide-react'
 import {
   loadSystemSettings, saveSystemSettings, validateNextInvoiceNumber,
   loadUserAccounts, updateAccountPassword, DEFAULT_SETTINGS
 } from '../data/settingsStore'
 import { useUser } from '../context/UserContext'
+import { isSoundEnabled, setSoundEnabled, playSuccessSound } from '../utils/soundEngine'
 
 export default function SettingsPage() {
   const { currentUser, user } = useUser()
@@ -252,7 +253,37 @@ export default function SettingsPage() {
                 <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
               </select>
             </div>
+          </div>
 
+          {/* Sound Effects Toggle */}
+          <div className="pt-4 border-t border-line">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-extrabold text-ink flex items-center gap-2">
+                  <Volume2 size={16} className="text-primary" /> Audio Feedback Sound Effects
+                </h4>
+                <p className="text-[11px] text-ink-soft mt-0.5">Synthesize crystal-clear audio feedback chimes on payments, trip updates, invoices, and system alerts.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !soundEnabled
+                  setSoundEnabledState(next)
+                  setSoundEnabled(next)
+                  if (next) playSuccessSound()
+                }}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                  soundEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                  soundEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div>
               <label className="block font-bold text-ink mb-1">Time Format</label>
               <select
