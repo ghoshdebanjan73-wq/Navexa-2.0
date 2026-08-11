@@ -18,6 +18,7 @@ export const DATE_RANGES = [
   'Last 3 Months',
   'Last 6 Months',
   'This Year',
+  'All Time',
   'Custom Range',
 ]
 
@@ -41,6 +42,9 @@ export function getDateBoundaries(dateRange, customStart, customEnd) {
   } else if (dateRange === 'This Year') {
     start = new Date(now.getFullYear(), 0, 1)
     end = new Date(now.getFullYear(), 11, 31, 23, 59, 59)
+  } else if (dateRange === 'All Time') {
+    start = new Date(1970, 0, 1)
+    end = new Date(now.getFullYear() + 10, 11, 31, 23, 59, 59)
   } else if (dateRange === 'Custom Range' && customStart && customEnd) {
     start = new Date(customStart)
     end = new Date(customEnd)
@@ -57,8 +61,9 @@ export function getFilteredReportData({ dateRange = 'This Month', customStart = 
   const { start, end } = getDateBoundaries(dateRange, customStart, customEnd)
 
   const isBetween = (dateStr) => {
-    if (!dateStr) return false
+    if (!dateStr) return true
     const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return true
     return d >= start && d <= end
   }
 
@@ -87,9 +92,14 @@ export function getFilteredReportData({ dateRange = 'This Month', customStart = 
  */
 export function computeBusinessOverview({ transactions, trips, invoices }) {
   // Revenue from collected finance income and paid invoices
-  const totalRevenue = transactions
+  const txnIncome = transactions
     .filter(t => t.type === 'Income')
     .reduce((sum, t) => sum + t.amount, 0)
+
+  const invoicePaidRevenue = invoices
+    .reduce((sum, i) => sum + (Number(i.amountPaid) || 0), 0)
+
+  const totalRevenue = Math.max(txnIncome, invoicePaidRevenue)
 
   // Total expenses
   const totalExpenses = transactions
@@ -99,8 +109,8 @@ export function computeBusinessOverview({ transactions, trips, invoices }) {
   // Net Profit
   const netProfit = totalRevenue - totalExpenses
 
-  // Completed trips
-  const completedTrips = trips.filter(t => t.status === 'Completed').length
+  // Completed & active operational trips
+  const completedTrips = trips.filter(t => ['Completed', 'Started', 'Ongoing', 'Passenger Picked Up', 'Vehicle Assigned', 'Driver Assigned', 'Booked', 'Confirmed'].includes(t.status)).length
 
   // Outstanding receivables
   const outstandingReceivables = invoices
@@ -162,12 +172,12 @@ export function computeFinancialPerformance({ transactions, start, end }) {
  */
 export function computeTripPerformance({ trips }) {
   const totalTrips = trips.length
-  const completedTrips = trips.filter(t => t.status === 'Completed').length
-  const upcomingTrips = trips.filter(t => t.status === 'Booked' || t.status === 'Confirmed' || t.status === 'Driver Assigned' || t.status === 'Vehicle Assigned').length
+  const completedTrips = trips.filter(t => ['Completed', 'Started', 'Ongoing', 'Passenger Picked Up', 'Vehicle Assigned', 'Driver Assigned'].includes(t.status)).length
+  const upcomingTrips = trips.filter(t => t.status === 'Booked' || t.status === 'Confirmed').length
   const cancelledTrips = trips.filter(t => t.status === 'Cancelled').length
 
   const totalTripRevenue = trips
-    .filter(t => t.status === 'Completed')
+    .filter(t => t.status !== 'Cancelled')
     .reduce((sum, t) => sum + (Number(t.actualFare || t.fare) || 0), 0)
 
   const averageTripValue = completedTrips > 0 ? Math.round(totalTripRevenue / completedTrips) : 0
@@ -187,44 +197,58 @@ export function computeTripPerformance({ trips }) {
  */
 export function computeCustomerPerformance({ trips, invoices }) {
   const totalCustomers = liveCustomers.length
-
-  // Calculate stats per customer
   const customerMap = new Map()
 
+  // Pre-populate with all registered customers
   liveCustomers.forEach(c => {
-    customerMap.set(c.name.toLowerCase(), {
+    customerMap.set(c.name.trim().toLowerCase(), {
       name: c.name,
-      phone: c.phone,
+      phone: c.phone || '',
+      email: c.email || '',
       completedTrips: 0,
       revenue: 0,
       outstanding: 0,
     })
   })
 
+  // Attribute trips
   trips.forEach(t => {
-    if (t.status === 'Completed' && t.customer) {
-      const key = t.customer.toLowerCase()
-      if (!customerMap.has(key)) {
-        customerMap.set(key, { name: t.customer, phone: '', completedTrips: 0, revenue: 0, outstanding: 0 })
-      }
-      const rec = customerMap.get(key)
+    if (!t.customer) return
+    const key = t.customer.trim().toLowerCase()
+    if (!customerMap.has(key)) {
+      customerMap.set(key, { name: t.customer, phone: '', email: '', completedTrips: 0, revenue: 0, outstanding: 0 })
+    }
+    const rec = customerMap.get(key)
+    if (['Completed', 'Started', 'Ongoing', 'Passenger Picked Up', 'Vehicle Assigned', 'Driver Assigned', 'Booked', 'Confirmed'].includes(t.status)) {
       rec.completedTrips += 1
+    }
+    if (t.status === 'Completed' || t.paymentStatus === 'Paid') {
       rec.revenue += Number(t.actualFare || t.fare || 0)
     }
   })
 
+  // Attribute invoices (revenue & outstanding balance)
   invoices.forEach(i => {
-    if (i.paymentStatus !== 'Paid' && i.paymentStatus !== 'Cancelled' && i.customerName) {
-      const key = i.customerName.toLowerCase()
-      if (customerMap.has(key)) {
-        customerMap.get(key).outstanding += (i.balanceDue || 0)
-      }
+    if (!i.customerName) return
+    const key = i.customerName.trim().toLowerCase()
+    if (!customerMap.has(key)) {
+      customerMap.set(key, { name: i.customerName, phone: i.customerPhone || '', email: i.customerEmail || '', completedTrips: 0, revenue: 0, outstanding: 0 })
+    }
+    const rec = customerMap.get(key)
+    const paid = Number(i.amountPaid || 0)
+    const bal = Number(i.balanceDue !== undefined ? i.balanceDue : Math.max(0, (i.totalAmount || 0) - paid))
+
+    if (rec.revenue === 0 || paid > rec.revenue) {
+      rec.revenue = Math.max(rec.revenue, paid)
+    }
+
+    if (i.paymentStatus !== 'Paid' && i.paymentStatus !== 'Cancelled') {
+      rec.outstanding += bal
     }
   })
 
   const topCustomers = Array.from(customerMap.values())
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 5)
+    .sort((a, b) => (b.revenue + b.completedTrips * 100) - (a.revenue + a.completedTrips * 100))
 
   const repeatCustomers = Array.from(customerMap.values()).filter(c => c.completedTrips > 1).length
   const newCustomers = Math.max(0, totalCustomers - repeatCustomers)
@@ -240,17 +264,30 @@ export function computeCustomerPerformance({ trips, invoices }) {
 /**
  * 5. Fleet Vehicle Performance & Utilization (Side-by-Side Comparison)
  */
-export function computeVehiclePerformance({ trips, transactions }) {
+export function computeVehiclePerformance({ trips, transactions, invoices }) {
   const fleet = liveVehicles.map(veh => {
-    const vehTrips = trips.filter(t => t.vehicleId === veh.id || (t.vehicle && t.vehicle.includes(veh.name)))
-    const completedTrips = vehTrips.filter(t => t.status === 'Completed').length
+    const vehNameLower = veh.name.trim().toLowerCase()
+    const vehRegLower = (veh.reg || veh.registrationNumber || '').trim().toLowerCase()
 
-    const tripRevenue = vehTrips
-      .filter(t => t.status === 'Completed')
-      .reduce((sum, t) => sum + (Number(t.actualFare || t.fare) || 0), 0)
+    const vehTrips = trips.filter(t => {
+      if (t.vehicleId && t.vehicleId === veh.id) return true
+      if (t.vehicle && (t.vehicle.toLowerCase().includes(vehNameLower) || (vehRegLower && t.vehicle.toLowerCase().includes(vehRegLower)))) return true
+      if (t.vehicleReg && vehRegLower && t.vehicleReg.toLowerCase().includes(vehRegLower)) return true
+      return false
+    })
+
+    const completedTrips = vehTrips.filter(t => ['Completed', 'Started', 'Ongoing', 'Passenger Picked Up', 'Vehicle Assigned', 'Driver Assigned'].includes(t.status)).length
+
+    let tripRevenue = vehTrips
+      .reduce((sum, t) => {
+        const inv = invoices.find(i => i.tripId === t.id)
+        if (inv && Number(inv.amountPaid || 0) > 0) return sum + Number(inv.amountPaid)
+        if (t.status === 'Completed' || t.paymentStatus === 'Paid') return sum + Number(t.actualFare || t.fare || 0)
+        return sum + Number(t.fare || 0)
+      }, 0)
 
     const recordedExpenses = transactions
-      .filter(t => t.type === 'Expense' && (t.vehicleId === veh.id || (t.description && t.description.toLowerCase().includes(veh.name.toLowerCase()))))
+      .filter(t => t.type === 'Expense' && (t.vehicleId === veh.id || (t.description && t.description.toLowerCase().includes(vehNameLower))))
       .reduce((sum, t) => sum + t.amount, 0)
 
     const estimatedProfit = tripRevenue - recordedExpenses
@@ -258,7 +295,7 @@ export function computeVehiclePerformance({ trips, transactions }) {
     return {
       id: veh.id,
       name: veh.name,
-      registration: veh.registration || 'N/A',
+      registration: veh.registration || veh.reg || veh.registrationNumber || 'N/A',
       type: veh.type || 'Sedan',
       status: veh.status || 'Available',
       completedTrips,
@@ -299,11 +336,16 @@ export function computeExpenseBreakdown({ transactions }) {
  */
 export function computeDriverPerformance({ trips }) {
   return liveDrivers.map(d => {
-    const driverTrips = trips.filter(t => t.driverId === d.id || t.driverName === d.fullName)
-    const completedTrips = driverTrips.filter(t => t.status === 'Completed').length
+    const driverNameLower = d.fullName.trim().toLowerCase()
+    const driverTrips = trips.filter(t => {
+      if (t.driverId && t.driverId === d.id) return true
+      if (t.driverName && t.driverName.trim().toLowerCase() === driverNameLower) return true
+      return false
+    })
+
+    const completedTrips = driverTrips.filter(t => ['Completed', 'Started', 'Ongoing', 'Passenger Picked Up', 'Driver Assigned'].includes(t.status)).length
     const tripRevenue = driverTrips
-      .filter(t => t.status === 'Completed')
-      .reduce((sum, t) => sum + (Number(t.actualFare || t.fare) || 0), 0)
+      .reduce((sum, t) => sum + Number(t.actualFare || t.fare || 0), 0)
 
     return {
       id: d.id,
