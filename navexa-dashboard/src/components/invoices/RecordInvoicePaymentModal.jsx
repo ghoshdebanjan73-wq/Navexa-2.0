@@ -76,13 +76,13 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/50 p-3 sm:p-4 backdrop-blur-xs animate-fadeIn overflow-y-auto"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-pop animate-scaleUp space-y-5">
+      <div className="relative my-auto w-full max-w-md max-h-[90vh] flex flex-col rounded-2xl border border-line bg-surface shadow-pop animate-scaleUp overflow-hidden">
         
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-line pb-3">
+        {/* Fixed Header */}
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5 shrink-0 bg-surface z-10">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
               <CreditCard size={18} />
@@ -95,10 +95,14 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
           <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-soft hover:bg-slate-100 hover:text-ink transition-colors cursor-pointer"
+            aria-label="Close modal"
           >
             <X size={18} />
           </button>
         </div>
+
+        {/* Scrollable Form Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
 
         {/* Error Alert */}
         {error && (
@@ -248,6 +252,8 @@ export default function RecordInvoicePaymentModal({ invoice, isOpen, onClose, on
           </div>
 
         </form>
+
+        </div>
 
       </div>
     </div>

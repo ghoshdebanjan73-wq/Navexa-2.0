@@ -55,7 +55,7 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-fadeIn overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/50 p-3 sm:p-4 backdrop-blur-xs animate-fadeIn overflow-y-auto"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <style>{`
@@ -83,16 +83,16 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
         }
       `}</style>
 
-      <div className="my-6 w-full max-w-3xl rounded-2xl border border-line bg-surface p-6 shadow-pop animate-scaleUp space-y-6 max-h-[92vh] overflow-y-auto">
+      <div className="relative my-auto w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl border border-line bg-surface shadow-pop animate-scaleUp overflow-hidden">
         
-        {/* Top Control Bar (Hidden during print) */}
-        <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-line pb-4">
+        {/* Top Control Bar (Fixed Header - Hidden during print) */}
+        <div className="no-print flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-line bg-surface/95 backdrop-blur-md px-5 py-3.5 shrink-0 z-10">
           <div className="flex items-center gap-2.5">
             <StatusBadge status={paymentSummary.paymentStatus} />
-            <span className="text-xs font-bold text-ink num">{invoice.invoiceNumber}</span>
+            <span className="text-xs sm:text-sm font-extrabold text-ink num">{invoice.invoiceNumber}</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handlePrint}
               className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-bg px-3 py-1.5 text-xs font-bold text-ink hover:bg-slate-100 transition-colors cursor-pointer"
@@ -119,11 +119,15 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
             <button
               onClick={onClose}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-soft hover:bg-slate-100 hover:text-ink transition-colors cursor-pointer ml-1"
+              aria-label="Close modal"
             >
               <X size={18} />
             </button>
           </div>
         </div>
+
+        {/* Scrollable Modal Content Body */}
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
 
         {/* ─── DEDICATED PAYMENT DETAILS SECTION (SCREEN VIEW) ─────────────────── */}
         <div className="no-print space-y-4 rounded-2xl border border-line bg-bg/50 p-4 sm:p-5">
@@ -402,6 +406,8 @@ export default function InvoiceDetailModal({ invoice, isOpen, onClose, onRecordP
             <p className="font-bold text-ink">Thank you for doing business with {company.businessName || 'Navexa Logistics'}!</p>
             <p>Computer generated invoice. No signature required.</p>
           </div>
+
+        </div>
 
         </div>
 

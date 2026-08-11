@@ -567,15 +567,15 @@ export default function RecordExpenseModal({ isOpen, onClose, onSuccess }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/50 p-4 pt-8 pb-8 backdrop-blur-xs animate-fadeIn overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/50 p-3 sm:p-4 backdrop-blur-xs animate-fadeIn overflow-y-auto"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-lg rounded-2xl border border-line bg-surface shadow-pop animate-scaleUp overflow-hidden">
+      <div className="relative my-auto w-full max-w-xl max-h-[90vh] flex flex-col rounded-2xl border border-line bg-surface shadow-pop animate-scaleUp overflow-hidden">
 
-        {/* ─── Header ─────────────────────────────────────────────────────────── */}
-        <div className={`flex items-center justify-between px-5 py-4 border-b border-line ${catColor.replace('bg-', 'bg-').replace('-600', '-50')}`}>
+        {/* ─── Fixed Header ─────────────────────────────────────────────────────────── */}
+        <div className={`flex items-center justify-between px-5 py-3.5 border-b border-line shrink-0 z-10 ${catColor.replace('bg-', 'bg-').replace('-600', '-50')}`}>
           <div className="flex items-center gap-3">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-xs ${catColor}`}>
+            <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-xs ${catColor}`}>
               {showFuelPanel ? <Fuel size={18} /> : showTollPanel ? <Route size={18} /> : showParkingPanel ? <MapPin size={18} /> : showMaintenancePanel ? <Wrench size={18} /> : <TrendingDown size={18} />}
             </div>
             <div>
@@ -587,19 +587,21 @@ export default function RecordExpenseModal({ isOpen, onClose, onSuccess }) {
           </div>
           <button
             onClick={onClose}
+            aria-label="Close modal"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-soft hover:bg-slate-100 hover:text-ink transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* ─── Form Body ──────────────────────────────────────────────────────── */}
-        {error && (
-          <div className="flex items-center gap-2 mx-5 mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
-            <AlertCircle size={15} className="shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+        {/* ─── Scrollable Form Body ────────────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+              <AlertCircle size={15} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
         {uploadProgress && (
           <div className="flex items-center gap-2 mx-5 mt-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs font-semibold text-blue-700">
             <Loader2 size={14} className="animate-spin shrink-0" />
@@ -786,9 +788,10 @@ export default function RecordExpenseModal({ isOpen, onClose, onSuccess }) {
           </Field>
 
         </form>
+        </div>
 
-        {/* ─── Footer Actions ─────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-4 bg-bg">
+        {/* ─── Fixed Footer Actions ─────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-3.5 bg-surface shrink-0 z-10">
           <div className="text-[10px] text-ink-soft">
             Recorded by: <span className="font-bold text-ink">{currentUser?.name || 'Dispatcher'}</span>
           </div>
